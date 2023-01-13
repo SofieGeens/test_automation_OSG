@@ -10,8 +10,8 @@ pathToTesseract = r"C:\Program Files\Tesseract-OCR\tesseract.exe"
 protocolsUse = "C:\ProgramData\OSG\BrainRT\Config\Recording Templates"
 protocolsStorage = "C:\ProgramData\OSG\BrainRT\Config\Protocol Storage"
 sampleFolder = "C:\ProgramData\OSG\BrainRT\Config\Protocol Storage\Samples"
-protocolFiles = {"morpheus_ref":"Validation Morpheus v3 bip.XML","morpheus_bip":"Validation Morpheus v3 ref.xml"}
-protocolNames = {"morpheus_ref":"Validation Morpheus v3 bip","morpheus_bip":"Validation Morpheus v3 ref"}
+protocolFiles = {"morpheus_bip":"Validation Morpheus v3 bip.XML","morpheus_ref":"Validation Morpheus v3 ref.xml"}
+protocolNames = {"morpheus_bip":"Validation Morpheus v3 bip","morpheus_ref":"Validation Morpheus v3 ref"}
 #-------------------------------------------------------------------------------------------
 #monitor settings
 m_width=[]

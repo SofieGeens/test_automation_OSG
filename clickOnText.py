@@ -8,7 +8,7 @@ from Levenshtein import distance
 
 import settings as sets
 
-pytesseract.pytesseract.tesseract_cmd = sets.pathtoTesseract
+pytesseract.pytesseract.tesseract_cmd = sets.pathToTesseract
 
 #text should be without spaces, options for button: 'l' for left, 'r' for right, 'm' for middle
 def clickOnText(text,button): 
@@ -28,7 +28,6 @@ def clickOnText(text,button):
 		else:
 			#try again with inverted image, this might get better results
 			img = ImageOps.invert(img)
-			img.show()
 			result = findAndClick(img,text,button,monitor)
 			if result == 1:
 				return result

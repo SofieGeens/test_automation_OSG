@@ -7,13 +7,13 @@ from clickButton import clickButton
 from clickOnText import clickOnText
 from brainRT import openBrainRT, closeBrainRT
 from moveFiles import emptyFolder, moveForUse
+from findImage import findImage
 #general setting, needed for all devices
 import settings as sets
 
 #booleans that keep up with wether a test was succesful
-heartrate = False
-saturation = False
-hartpattern = False
+oxymeter = False
+pulseSignal = False
 
 def main():
 #start recording
@@ -44,11 +44,15 @@ def main():
 	clickButton("./images/starten.png")
 	time.sleep(20)
 	click=clickButton("./images/record.png")
-	time.sleep(5)
-
 #check SaO2 signals
-	#h=readValue(settings.heart[0],settings.heart[1])	#read heartrate
-	#if h<
+	#it takes some time before the saO2 signals are fully read
+	time.sleep(10)
+	#Because a patient simulator is used and not a real person, the values are set and this means a picture of it can be searched
+	#because of that, we don't need ocr or coordinates
+	oxymeter = findImage("./images/oxymeter.png")
+	#chek if the pulse signal comes trough by looking for an image match, again this is possible because it is always the same
+	pulseSignal = findImage("./images/pulsesignal.png")
+	print(oxymeter,pulseSignal)
 #data transition
 
 #impedence check
