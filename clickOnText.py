@@ -2,7 +2,8 @@
 import pyautogui as pag
 import time
 import pytesseract
-#import functions from other files
+import numpy as np
+import cv2
 from PIL import Image, ImageGrab, ImageOps, ImageEnhance
 from Levenshtein import distance
 
@@ -22,6 +23,7 @@ def clickOnText(text,button):
 		img = screenshot.convert('L')	 #make the image grayscale to make ocr easier
 		contraster = ImageEnhance.Contrast(img)
 		img = contraster.enhance(2)		 #increase contrast to make ocr easier
+		img.save("temp"+str(monitor)+".png")
 		result = findAndClick(img,text,button,monitor)
 		if result == 1:
 			return result
@@ -33,13 +35,41 @@ def clickOnText(text,button):
 				return result
 	return -1
 
+def clickOnTextOpenCV(text,button):
+	for monitor in range(len(sets.m_height)):
+		x1 = sets.m_x[monitor]
+		y1 = 0
+		x2 = sets.m_x[monitor] + sets.m_width[monitor]
+		y2 = sets.m_height[monitor]
+		screenshot = ImageGrab.grab(bbox =(x1,y1,x2,y2), include_layered_windows=False, all_screens=True)	#take a screenshot
+		screenshot.save("temp.png")		#save the screenshot
+		img = screenshot.convert('L')	 #make the image grayscale to make ocr easier
+		contraster = ImageEnhance.Contrast(img)
+		img = contraster.enhance(2)		 #increase contrast to make ocr easier
+		img.save("temp.png")
+		img = cv2.imread("temp.png")
+		img = cv2.GaussianBlur(img, (5,5), 0)
+		img = 255 - img
+		cv2.imwrite("temp.png",img)
+		result = findAndClick(img,text,button,monitor)
+		if result == 1:
+			return result
+		else:
+			#try again with inverted image, this might get better results
+			img = cv2.bitwise_not(img)
+			result = findAndClick(img,text,button,monitor)
+			if result == 1:
+				return result
+	return -1
+
 def findAndClick(image,text,button,monitor):
 	#data contains all chars currently on the screen with their upper and lower y and left and right x coordinate
-	data=pytesseract.image_to_boxes(image,output_type=pytesseract.Output.DICT)
+	data=pytesseract.image_to_boxes(image,output_type=pytesseract.Output.DICT,lang='eng',config='--psm 6')
 	s=""
 	#put all chars together in string s
 	for ch in data['char']:
 		s+=ch
+	print(s)
 	#calculate the edit distance, this is slow, but ocr isn't flawless, so 1 or 2 chars can be read wrong and it will still work
 	dis=5	#initiate dis as greater then 2
 	i=0		#initiate index
@@ -66,7 +96,7 @@ def findAndClick(image,text,button,monitor):
 			pag.click(x=middle[0],y=middle[1])
 		if button == 'm':
 			pag.click(x=middle[0],y=middle[1],button='middle')
-		return 1
+		return True
 	else:
 		print("text not found")
-		return -1
+		return False
