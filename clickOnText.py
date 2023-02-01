@@ -64,7 +64,7 @@ def clickOnTextOpenCV(text,button):
 
 def findAndClick(image,text,button,monitor):
 	#data contains all chars currently on the screen with their upper and lower y and left and right x coordinate
-	data=pytesseract.image_to_boxes(image,output_type=pytesseract.Output.DICT,lang='eng',config='--psm 6')
+	data=pytesseract.image_to_boxes(image,output_type=pytesseract.Output.DICT,config=r'-l eng --oem 3 --psm 6')
 	s=""
 	#put all chars together in string s
 	for ch in data['char']:

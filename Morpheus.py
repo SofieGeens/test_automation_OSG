@@ -17,6 +17,8 @@ from checkCableTobt import checkCableTobt
 from relaisCommand import relaisCommand
 from readValue import readValue
 from countColor import countGreen, countRed
+from findImage import findImage
+from removeVerticalLines import removeLines
 
 #general setting, needed for all devices
 import settings as sets
@@ -33,12 +35,14 @@ def main():
 	activeShorted = False
 #set up to use relais and function generator later
 	conn=serial.Serial(port=sets.serconn,baudrate=19200,bytesize=EIGHTBITS,timeout=3) #start connenction with serial conn
+	conn.read(100)
 	relaisCommand(conn,1,1,0)	#initialise relais
 	time.sleep(1)
 	relaisCommand(conn,6,sets.cards,1)	#turn usb on and off again
 	time.sleep(0.2)
 	relaisCommand(conn,3,0,0)	#reset all relais to off
-	
+	relaisCommand(conn,6,sets.cards,2) #turn on G2, otherwise nothing can be measured
+
 	rm = pyvisa.ResourceManager()
 	adress = rm.list_resources()[0] #the correct adress (for the function generator) always comes first in the list_resources
 	afg = rm.open_resource(adress)
@@ -130,21 +134,24 @@ def main():
 	clickButton("./images/impedence.png")
 	while not clickButton("./images/activeInput.png"):
 		pass
-	time.sleep(0.5)
+	while readValue(sets.x1[0],sets.y1[0],sets.x2[0],sets.y2[0]) == -1:
+		pass
 	#reference input not shorted
 	while not clickButton("./images/referenceInput.png"):
 		pass
-	relaisCommand(conn,1,1,0)
+	#relaisCommand(conn,1,1,0)
 	relaisCommand(conn,3,sets.cards,6)
 	wait = 0
 	test=True
-	while not countRed(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])>10:
+	value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3])
+	while not value>sets.minBigImpedence:
 		wait += 1
 		time.sleep(1)
 		if wait >= sets.maxWait:
 			test=False
 			break
-	if test: #the number showing is red
+		value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3])
+	if test: #smallImpedence
 		referenceNotShorted = True
 		print("refNS ok")
 	else:
@@ -153,13 +160,15 @@ def main():
 	relaisCommand(conn,7,sets.cards,4)
 	wait = 0
 	test=True
-	while not countGreen(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])>10:
+	value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3])
+	while not (value<sets.maxSmallImpedence and value!=-1):
 		wait += 1
-		time.sleep(1)
+		time.sleep(0.5)
 		if wait >= sets.maxWait:
 			test=False
 			break
-	if test: #the number is green 
+		value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3])
+	if test: #small impedence 
 		referenceShorted = True
 		print("refS ok")
 	else:
@@ -173,26 +182,18 @@ def main():
 	red = 0
 	relais = 4
 	card = sets.cards
-	conn.read(100)	#empty buffer
+	conn.read(100)	#empty relais buffer
 	for i in range(len(sets.x1)):
-		relaisCommand(conn,7,card,relais)
-		conn.read(4)
-		relais *= 2
-		if relais > 128:
-			relais = 1
-			card += 1
-			if card==sets.cards+1:
-				card = 1
-		relaisCommand(conn,6,card,relais)
-		conn.read(4)
 		wait = 0
 		test=True
-		while not countRed(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])>10:
+		value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
+		while not value>sets.minBigImpedence:
 			wait += 1
 			time.sleep(1)
 			if wait >= sets.maxWait:
 				test=False
 				break
+			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
 		if test:
 			red+=1
 	if red == len(sets.x1):
@@ -221,12 +222,14 @@ def main():
 		conn.read(4)
 		wait = 0
 		test=True
-		while not countGreen(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])>10:
+		value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
+		while not (value<sets.maxSmallImpedence and value != -1):
 			wait += 1
 			time.sleep(1)
 			if wait >= sets.maxWait:
 				test=False
 				break
+			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
 		if test:
 			green+=1
 	if green == len(sets.x1):
@@ -259,9 +262,11 @@ def main():
 		relaisCommand(conn,3,i,255)
 		conn.read(4)
 	wait=0
+	img = pag.screenshot("tmp.py")
+	img.imread("tmp.py")
+	img=removeLines(img)
 	while(1):
-		x,y = imagesearch("./images/sinus1.png",precision = 0.95)
-		if x != -1:
+		if findImage("./images/sinus.png",img,0.95):
 			oxymeter = True
 			print("signals ok")
 			break
@@ -298,10 +303,26 @@ def main():
 	time.sleep(20)
 	click=clickButton("./images/record.png")
 	input("check signals; press enter to continue")
-#onboard sensors
-	#onboard sensors come last because a person is needed to perform these actions
+#onboard sensors (comes last because a person is needed to perform these actions)
+	#get back to reference test
+	while not clickButton("./images/nieuweMeting.png"):
+		pass
+	time.sleep(0.5)
+	pag.write("test")
+	time.sleep(0.1)
+	pag.press("enter")
+	while not clickButton("./images/chooseProtocol.png"):
+		pass
+	time.sleep(0.1)
+	s=sets.protocolNames.get("morpheus_ref")
+	clickOnText(s.replace(" ",""),'l')  #get rid of spaces, because clickOnText cannot deal with them
+	pag.press("enter")
+	while not clickButton("./images/starten.png"):
+		pass
+	while not clickButtonPrecise("./images/record.png"):
+		pass
 	input("change bodyposition, press enter to continue")
-	print("check Pdiff and Pgage")
+	print("check Pdiff and Pgage, press enter to continue")
 #close the serial connection
 	conn.close()
 
