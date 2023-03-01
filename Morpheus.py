@@ -3,14 +3,16 @@
 import time
 import serial
 import pyvisa
+import cv2
 import pyautogui as pag
+from math import floor
 from serial.serialutil import EIGHTBITS
 from python_imagesearch.imagesearch import imagesearch
 from subprocess import Popen
 
 
 #import functions from other files
-from clickButton import clickButton, clickButtonPrecise
+from clickButton import clickButton, clickButtonPrecise, clickButtonPreciseArea
 from clickOnText import clickOnText, clickOnTextOpenCV
 from moveFiles import emptyFolder, moveForUse
 from checkCableTobt import checkCableTobt
@@ -74,10 +76,15 @@ def main():
 	pag.press("enter")
 	while not clickButton("./images/starten.png"):
 		pass
-	while not clickButtonPrecise("./images/record.png"):
-		pass
+	while True:
+		if clickButtonPrecise("./images/record.png"):
+			break
+		x,y = imagesearch("./images/morpheusNotFound.png")
+		if x!= -1:
+			print("de recorder kon niet worden gedetecteerd")
+			exit() 
 	pag.move(500,500) #move the mouse out of the way so that no hover pop up apears
-	
+	"""	
 #data transition
 	#wait for everything to be initialized well, max time to wait = 
 	wait=0
@@ -94,12 +101,15 @@ def main():
 			break	#waited to long, decide it doesn't work
 		time.sleep(1)
 		wait+=1
-	#relaisCommand(conn,6,sets.cards,1) #interrupt cable
+	x,y = imagesearch("./images/morpheusNotFound.png")
+	if x!= -1:
+		print("de recorder kon niet worden gedetecteerd")
+		exit()
+	relaisCommand(conn,6,sets.cards,1) #interrupt cable
 	#this might take a while to work so we go to the next step and check again from time to time with checkCableTobt function
 #check SaO2 signals
 	#Because a patient simulator is used and not a real person, the values are set and this means a picture of it can be searched
 	#because of that, we don't need ocr or coordinates
-	"""
 	wait=0
 	while(1):
 		x,y = imagesearch("./images/oxymeter.png",precision = 0.95)
@@ -125,10 +135,10 @@ def main():
 			break
 		time.sleep(1)
 		wait+=1
-	"""
 #data transmission transition
-	#print("data transition")
-	#btTocable = checkCableTobt(conn)
+	print("data transition")
+	btTocable = checkCableTobt(conn)
+	"""
 #impedence check
 	time.sleep(3)
 	clickButton("./images/impedence.png")
@@ -159,16 +169,23 @@ def main():
 	#reference input shorted
 	relaisCommand(conn,7,sets.cards,4)
 	wait = 0
-	test=True
 	value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3])
-	while not (value<sets.maxSmallImpedence and value!=-1):
-		wait += 1
-		time.sleep(0.5)
-		if wait >= sets.maxWait:
-			test=False
-			break
-		value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3])
-	if test: #small impedence 
+	while True:
+			if (value<=maxSmallImpedence and value !=-1):
+				longEnough = True
+				for i in range(5):										#stay stable on correct value for some time
+					if not (value<=maxSmallImpedence and value !=-1):
+						longEnough=False
+						break
+					time.sleep(0.5)
+				if longEnough:
+					break
+			wait += 1
+			time.sleep(1)
+			if wait >= sets.maxWait:
+				break
+			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
+	if longEnough: #small impedence 
 		referenceShorted = True
 		print("refS ok")
 	else:
@@ -221,16 +238,23 @@ def main():
 		relaisCommand(conn,6,card,relais)
 		conn.read(4)
 		wait = 0
-		test=True
 		value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
-		while not (value<sets.maxSmallImpedence and value != -1):
+		while True:
+			if (value<=maxSmallImpedence and value !=-1):
+				longEnough = True
+				for i in range(5):										#stay stable on correct value for some time
+					if not (value<=maxSmallImpedence and value !=-1):
+						longEnough=False
+						break
+					time.sleep(0.5)
+				if longEnough:
+					break
 			wait += 1
 			time.sleep(1)
 			if wait >= sets.maxWait:
-				test=False
 				break
 			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
-		if test:
+		if longEnough:
 			green+=1
 	if green == len(sets.x1):
 		activeNotShorted = True
@@ -245,9 +269,14 @@ def main():
 	time.sleep(0.2)
 	clickButtonPrecise("./images/2000MicroV.png")
 	time.sleep(0.2)
-	clickButtonPrecise("./images/10secs.png")
-	time.sleep(0.2)
-	clickButtonPrecise("./images/2secs.png")
+	#there is another 2secs button on the top half of the screen
+	clickButtonPreciseArea("./images/10secs.png",0,floor(sets.m_height[0]/2),floor(sets.m_width[0]/2),sets.m_height[0])
+	wait=0
+	while not clickButtonPreciseArea("./images/2secs.png",0,floor(sets.m_height[0]/2),floor(sets.m_width[0]/2),sets.m_height[0]):
+		wait+=1
+		if wait>sets.maxWait:
+			break
+	
 	#set signal on function generator (sine, 10Hz 4Vpp)
 	afg.write("FUNCTION SIN")
 	afg.write("FREQUENCY 10")
@@ -256,14 +285,16 @@ def main():
 	afg.write("VOLTAGE:AMPLITUDE 4") #voltage divider makes it 4 mVpp
 	afg.write('OUTPUT1 on')
 	#let signal go trough for every input
+	conn.read(100)
 	relaisCommand(conn,3,sets.cards,250)
 	conn.read(4)
 	for i in range(1,sets.cards):
+		print("loop")
 		relaisCommand(conn,3,i,255)
 		conn.read(4)
 	wait=0
-	img = pag.screenshot("tmp.py")
-	img.imread("tmp.py")
+	img = pag.screenshot("tmp.png")
+	img = cv2.imread("tmp.png")
 	img=removeLines(img)
 	while(1):
 		if findImage("./images/sinus.png",img,0.95):
