@@ -13,8 +13,7 @@ def emptyFolder():
 		destinationPath = os.path.join(sets.protocolsStorage,f)
 		os.rename(sourcePath,destinationPath)
 
-def moveForUse(L):
-	for f in L:
-		sourcePath = os.path.join(sets.protocolsStorage,f)
-		destinationPath = os.path.join(sets.protocolsUse,f)
-		os.rename(sourcePath,destinationPath)
+def moveForUse():
+	sourcePath = os.path.join(sets.protocolsStorage,f)
+	destinationPath = os.path.join(sets.protocolsUse,f)
+	os.rename(sourcePath,destinationPath)

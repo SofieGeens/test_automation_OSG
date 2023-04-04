@@ -1,8 +1,8 @@
-serconn = "COM13"
+serconn = "COM11"
 cards = 3 #number of cards
 maxWait = 30 #maximum time to wait for something to happen before we descide it doesn't work
-maxSmallImpedence = 10
-minBigImpedence = 5000
+maxSmallImpedence = 1
+minBigImpedence = 1000
 refImp = [190,350,230,370]
 x1=[85,140,190,240,295,345,400,455,505,560,610,665,85,140,190]#,240,295,345,400,455,505,560,610,665]
 y1=[510,510,510,510,510,510,510,510,510,510,510,510,460,460,460]#,460,460,460,460,460,460,460,460,460]

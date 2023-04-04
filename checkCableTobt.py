@@ -36,5 +36,6 @@ def checkCableTobt(conn):
 				print("wait")
 				if wait>=sets.maxWait:
 					print("cable to bt not ok")
+					break
 				time.sleep(1)
 				wait+=1

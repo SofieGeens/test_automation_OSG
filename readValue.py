@@ -1,19 +1,18 @@
-import pytesseract
+import easyocr
 import numpy as np
 import settings as sets
 from PIL import Image, ImageGrab, ImageEnhance
 
-pytesseract.pytesseract.tesseract_cmd = sets.pathToTesseract
+#pytesseract.pytesseract.tesseract_cmd = sets.pathToTesseract
 
-def readValue(x1,y1,x2,y2):	
+def readValue(x1,y1,x2,y2,ocr):
 	screenshot = ImageGrab.grab(bbox =(x1,y1,x2,y2), include_layered_windows=False)
 	img = screenshot.convert('L')	 #make the image grayscale to make ocr easier
-	width = int(img.shape[1] * 2)
-	height = int(img.shape[0] * 2)
-	dimention = (width, height)
+	w,h = img.size
+	dimention = (w*3, h*3)
 	# resize image
-	resized = cv2.resize(img, dimention)
-	contraster = ImageEnhance.Contrast(img)
+	resized = img.resize(dimention)		#double image size to get optimal height for ocr (30 pixels)
+	contraster = ImageEnhance.Contrast(resized)
 	img = contraster.enhance(2.5)		 #increase contrast to make ocr easier
 	#img.show()
 	d=np.array(img)
@@ -21,12 +20,11 @@ def readValue(x1,y1,x2,y2):
 		for y in range(img.height):
 			if img.getpixel((x,y))>50:
 				img.putpixel((x,y),255)
-	contraster = ImageEnhance.Contrast(img)
 	img.save("tmp.png")
-	result = pytesseract.image_to_string(img, lang='eng', config='--psm 10 --oem 3 -c tessedit_char_whitelist=0123456789')
-	print(result)
+	result = ocr.readtext(img)
+	print(result[0][1])
 	try:
-		return int(result)
+		return int(result[0][1])
 	except:
 		print(-1)
 		return -1

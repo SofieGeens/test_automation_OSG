@@ -4,6 +4,7 @@ import time
 import serial
 import pyvisa
 import cv2
+import easyocr
 import pyautogui as pag
 from math import floor
 from serial.serialutil import EIGHTBITS
@@ -35,7 +36,8 @@ def main():
 	referenceShorted = False
 	activeNotShorted = False
 	activeShorted = False
-#set up to use relais and function generator later
+#set up to use ocr, relais and function generator later
+	ocr = easyocr.Reader(['en'])
 	conn=serial.Serial(port=sets.serconn,baudrate=19200,bytesize=EIGHTBITS,timeout=3) #start connenction with serial conn
 	conn.read(100)
 	relaisCommand(conn,1,1,0)	#initialise relais
@@ -52,27 +54,24 @@ def main():
 #start recording
 	#close Shell+ if still open and give enough time to close properly
 	try:
-		Popen(["taskkill","/IM","ShellPlus.exe"])
+		Popen(["taskkill","/IM","C:\Program Files (x86)\BrainRT\ShellPlus.exe"])
 		time.sleep(1)
 	except:
 		pass
 	#empty map where protocols are stored and only put needed protocols in there
 	emptyFolder()
-	moveForUse([sets.protocolFiles.get("morpheus_ref"),sets.protocolFiles.get("morpheus_bip")])
+	moveForUse(sets.protocolFiles.get("morpheus_ref"))
 	#open Shell+ again and wait for it to start up properly
 	Popen(sets.pathToShellPlus)
+	time.sleep(15)
 	#start new measurement
-	while not clickButton("./images/nieuweMeting.png"):
-		pass
-	time.sleep(0.5)
+	pag.keyDown("alt")
+	pag.keyDown("b")
+	pag.keyUp("alt")
+	pag.keyUp("b")
+	pag.press("n")
 	pag.write("test")
-	time.sleep(0.1)
 	pag.press("enter")
-	while not clickButton("./images/chooseProtocol.png"):
-		pass
-	time.sleep(0.1)
-	s=sets.protocolNames.get("morpheus_ref")
-	clickOnText(s.replace(" ",""),'l')  #get rid of spaces, because clickOnText cannot deal with them
 	pag.press("enter")
 	while not clickButton("./images/starten.png"):
 		pass
@@ -84,9 +83,9 @@ def main():
 			print("de recorder kon niet worden gedetecteerd")
 			exit() 
 	pag.move(500,500) #move the mouse out of the way so that no hover pop up apears
-	"""	
 #data transition
-	#wait for everything to be initialized well, max time to wait = 
+	"""
+	#wait for everything to be initialized well
 	wait=0
 	while(1):	
 		x,y = imagesearch("./images/cable.png")
@@ -144,7 +143,7 @@ def main():
 	clickButton("./images/impedence.png")
 	while not clickButton("./images/activeInput.png"):
 		pass
-	while readValue(sets.x1[0],sets.y1[0],sets.x2[0],sets.y2[0]) == -1:
+	while readValue(sets.x1[0],sets.y1[0],sets.x2[0],sets.y2[0],ocr) == -1:
 		pass
 	#reference input not shorted
 	while not clickButton("./images/referenceInput.png"):
@@ -153,14 +152,14 @@ def main():
 	relaisCommand(conn,3,sets.cards,6)
 	wait = 0
 	test=True
-	value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3])
+	value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3],ocr)
 	while not value>sets.minBigImpedence:
 		wait += 1
 		time.sleep(1)
 		if wait >= sets.maxWait:
 			test=False
 			break
-		value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3])
+		value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3],ocr)
 	if test: #smallImpedence
 		referenceNotShorted = True
 		print("refNS ok")
@@ -169,7 +168,7 @@ def main():
 	#reference input shorted
 	relaisCommand(conn,7,sets.cards,4)
 	wait = 0
-	value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3])
+	value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3],ocr)
 	while True:
 			if (value<=maxSmallImpedence and value !=-1):
 				longEnough = True
@@ -203,14 +202,14 @@ def main():
 	for i in range(len(sets.x1)):
 		wait = 0
 		test=True
-		value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
+		value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],ocr)
 		while not value>sets.minBigImpedence:
 			wait += 1
 			time.sleep(1)
 			if wait >= sets.maxWait:
 				test=False
 				break
-			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
+			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],ocr)
 		if test:
 			red+=1
 	if red == len(sets.x1):
@@ -238,7 +237,7 @@ def main():
 		relaisCommand(conn,6,card,relais)
 		conn.read(4)
 		wait = 0
-		value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
+		value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],ocr)
 		while True:
 			if (value<=maxSmallImpedence and value !=-1):
 				longEnough = True
@@ -253,7 +252,7 @@ def main():
 			time.sleep(1)
 			if wait >= sets.maxWait:
 				break
-			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
+			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],ocr)
 		if longEnough:
 			green+=1
 	if green == len(sets.x1):
@@ -311,18 +310,26 @@ def main():
 	#close current measurement
 	Popen(["taskkill","/IM","BrtTask.exe"])
 #signal check bip
+	#move the correct protocol to the folder to use it
+	try:
+		Popen(["taskkill","/IM","C:\Program Files (x86)\BrainRT\ShellPlus.exe"])
+		time.sleep(1)
+	except:
+		pass
+	#empty map where protocols are stored and only put needed protocols in there
+	emptyFolder()
+	moveForUse(sets.protocolFiles.get("morpheus_ref"))
+	#open Shell+ again and wait for it to start up properly
+	Popen(sets.pathToShellPlus)
+	time.sleep(15)
 	#start new measurement
-	while not clickButton("./images/nieuweMeting.png"):
-		pass
-	time.sleep(5)
+	pag.keyDown("alt")
+	pag.keyDown("b")
+	pag.keyUp("alt")
+	pag.keyUp("b")
+	pag.press("n")
 	pag.write("test")
-	time.sleep(0.1)
 	pag.press("enter")
-	while not clickButton("./images/chooseProtocol.png"):
-		pass
-	time.sleep(0.5)
-	s=sets.protocolNames.get("morpheus_bip")
-	clickOnText(s.replace(" ",""),'l')  #get rid of spaces, because clickOnText cannot deal with them
 	pag.press("enter")
 	clickButton("./images/starten.png")
 	#let signal go trough for every input

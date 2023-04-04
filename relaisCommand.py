@@ -12,13 +12,15 @@ def relaisCommand(conn,cmd,adr,data):
 from serial.serialutil import EIGHTBITS
 import settings as sets
 import time
-conn=serial.Serial(port="COM13",baudrate=19200,bytesize=EIGHTBITS,timeout=3)
-relais = 4
-card = sets.cards
-relaisCommand(conn,3,sets.cards,250)
+conn=serial.Serial(port="COM11",baudrate=19200,bytesize=EIGHTBITS,timeout=3)
+relaisCommand(conn,1,1,0)
+conn.read(100)
+relaisCommand(conn,3,3,250)
+print(conn.read(4))
 conn.read(4)
 for i in range(1,sets.cards):
+	#print("loop")
 	relaisCommand(conn,3,i,255)
-	conn.read(4)
+	print(conn.read(4))
 conn.close()
 """
