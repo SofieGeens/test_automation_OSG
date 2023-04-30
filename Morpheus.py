@@ -3,7 +3,6 @@
 import time
 import serial
 import pyvisa
-import cv2
 import easyocr
 import pyautogui as pag
 from math import floor
@@ -292,19 +291,6 @@ def main():
 		relaisCommand(conn,3,i,255)
 		conn.read(4)
 	wait=0
-	img = pag.screenshot("tmp.png")
-	img = cv2.imread("tmp.png")
-	img=removeLines(img)
-	while(1):
-		if findImage("./images/sinus.png",img,0.95):
-			oxymeter = True
-			print("signals ok")
-			break
-		if wait>=sets.maxWait:
-			print("signals not ok")
-			break
-		time.sleep(1)
-		wait+=1
 	#turn off all relais, not needed, but just in case
 	relaisCommand(conn,3,0,0)
 	#close current measurement

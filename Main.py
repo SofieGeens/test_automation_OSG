@@ -20,7 +20,6 @@ from moveFiles import emptyFolder, moveForUse
 from checkCableTobt import checkCableTobt
 from relaisCommand import relaisCommand
 from readValue import readValue
-from countColor import countGreen, countRed
 from findImage import findImage
 from removeVerticalLines import removeLines
 
@@ -277,6 +276,7 @@ def main():
 	#close the impedence window
 	clickButton("./images/closeImpedence.png")
 #signal check
+	"""
 	#setting some settings to get the view right and compare sine to a correct sine wave
 	clickButtonPrecise("./images/1000MicroV.png")
 	time.sleep(0.2)
@@ -289,7 +289,7 @@ def main():
 		wait+=1
 		if wait>sets.maxWait:
 			break
-	
+	"""
 	#set signal on function generator (sine, 10Hz 4Vpp)
 	afg.write("FUNCTION SIN")
 	afg.write("FREQUENCY 10")
@@ -305,20 +305,7 @@ def main():
 		print("loop")
 		relaisCommand(conn,3,i,255)
 		conn.read(4)
-	wait=0
-	img = pag.screenshot("tmp.png")
-	img = cv2.imread("tmp.png")
-	img=removeLines(img)
-	while(1):
-		if findImage("./images/sinus.png",img,0.95):
-			oxymeter = True
-			print("signals ok")
-			break
-		if wait>=sets.maxWait:
-			print("signals not ok")
-			break
-		time.sleep(1)
-		wait+=1
+	#TODO: fft
 	#turn off all relais, not needed, but just in case
 	relaisCommand(conn,3,0,0)
 	#close current measurement
@@ -354,27 +341,16 @@ def main():
 		conn.read(4)
 	time.sleep(20)
 	click=clickButton("./images/record.png")
+	#TODO: fft
 	input("check signals; press enter to continue")
 #onboard sensors (comes last because a person is needed to perform these actions)
 	#get back to reference test
-	while not clickButton("./images/nieuweMeting.png"):
-		pass
-	time.sleep(0.5)
-	pag.write("test")
-	time.sleep(0.1)
-	pag.press("enter")
-	while not clickButton("./images/chooseProtocol.png"):
-		pass
-	time.sleep(0.1)
-	s=sets.protocolNames.get("morpheus_ref")
-	clickOnText(s.replace(" ",""),'l')  #get rid of spaces, because clickOnText cannot deal with them
-	pag.press("enter")
-	while not clickButton("./images/starten.png"):
-		pass
-	while not clickButtonPrecise("./images/record.png"):
-		pass
+	#TODO: fix that it opens without clickOnText
+	
 	input("change bodyposition, press enter to continue")
 	print("check Pdiff and Pgage, press enter to continue")
+	#TODO: close BrainRT
+	#TODO: make rapport
 #close the serial connection, database connection and cursor on database
 	conn.close()
 	cursor.close()
