@@ -30,23 +30,23 @@ def main():
 #set up to use ocr, relais, database and function generator later
 	#database
 	dbConn = mysql.connector.connect(user='Sofie', password='MySQLw@chtw00rd',host='127.0.0.1',database='masterproef')
-	cursor = dbConn.cursor()
+	cursor = dbConn.cursor()			#sends queries to the db
 	#ocr
 	ocr = easyocr.Reader(['en'])
 	#connenction with serial conn
 	conn=serial.Serial(port=sets.serconn,baudrate=19200,bytesize=EIGHTBITS,timeout=3) 
 	conn.read(100)
-	relaisCommand(conn,1,1,0)	#initialise relais
+	relaisCommand(conn,1,1,0)			#initialise relais
 	time.sleep(1)
 	relaisCommand(conn,6,sets.cards,1)	#turn usb on and off again
 	time.sleep(0.2)
-	relaisCommand(conn,3,0,0)	#reset all relais to off
-	relaisCommand(conn,6,sets.cards,2) #turn on G2, otherwise nothing can be measured
+	relaisCommand(conn,3,0,0)			#reset all relais to off
+	relaisCommand(conn,6,sets.cards,2)	#turn on G2, otherwise nothing can be measured
 	#function generator
 	rm = pyvisa.ResourceManager()
-	adress = rm.list_resources()[0] #the correct adress (for the function generator) always comes first in the list_resources
+	adress = rm.list_resources()[0]		#the correct adress (for the function generator) always comes first in the list_resources
 	afg = rm.open_resource(adress)
-	afg.write("*RST")
+	afg.write("*RST")					#reset the function generator
 
 	#booleans that keep up with wether a test needs to be performed
 	cursor.execute("SELECT testID FROM test WHERE testName = 'morpheus';")
