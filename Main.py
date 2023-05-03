@@ -120,19 +120,6 @@ def main():
 	relaisCommand(conn,6,sets.cards,1)						#interrupt cable between device and computer to switch to bluetooth mode
 	#this takes a while to work so we go to the next step and check again after checking the SaO2 with checkCableTobt function
 #check SaO2 signals
-	#TODO: beter doen dan dit, want die image matching is niet goed
-	wait=0
-	while(1):
-		x,y = imagesearch("./images/oxymeter.png",precision = 0.95)
-		if x != -1:
-			oxymeter = True
-			print("oxymeter ok")
-			break
-		if wait>= 5: #sets.maxWait:
-			print("oxymeter not ok")
-			break
-		time.sleep(1)
-		wait+=1
 	#chek if the pulse signal comes trough by looking for an image match, this is possible because the signal is always the same because of the use of a virtual patient
 	pulsesig=False
 	for i in range(sets.maxWait):							#try maxWait times before deciding it is not correct
@@ -147,6 +134,7 @@ def main():
 #data transmission transition
 	print("data transition")
 	btTocable = checkCableTobt(conn)
+
 #impedence check
 	time.sleep(3)
 	#start impedence measurement
@@ -258,7 +246,18 @@ def main():
 		print("actS not ok")
 	#close the impedence window
 	clickButton("./images/closeImpedence.png")
-#signal check
+#start new measurement to get clean data, because some other measurements stop during impedance check
+	Popen(["taskkill","/IM","BrtTask.exe"])
+	pag.keyDown("alt")
+	pag.keyDown("b")
+	pag.keyUp("alt")
+	pag.keyUp("b")
+	pag.press("n")
+	pag.write("test")
+	pag.press("enter")
+	pag.press("enter")
+	clickButton("./images/starten.png")
+#signal check and oxymeter check
 	#niet nodig?
 	"""
 	#setting some settings to get the view right and compare sine to a correct sine wave
@@ -294,6 +293,7 @@ def main():
 	relaisCommand(conn,3,0,0)
 	#close current measurement
 	Popen(["taskkill","/IM","BrtTask.exe"])
+	time.sleep(3)					#give program some time to shut down
 	result = fft(getPath())
 	correct = 0
 	for item in result:
@@ -304,11 +304,14 @@ def main():
 		print("signalRef ok")
 	else:
 		print("signalRef not ok")
-	#TODO: fft
+	if oxymeter(getPath())[0] == 98.0 and  oxymeter(getPath())[1] == 80.0:
+		print("oxymeter ok")
+	else:
+		print("oxymeter not ok")
 #signal check bip
 	#move the correct protocol to the folder to use it
 	Popen(["taskkill","/IM","C:\Program Files (x86)\BrainRT\ShellPlus.exe"])
-	time.sleep(1)
+	time.sleep(3)					#give program some time to shut down
 	#empty map where protocols are stored and only put needed protocols in there
 	emptyFolder()
 	moveForUse(sets.protocolFiles.get("morpheus_bip"))
