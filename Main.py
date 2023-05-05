@@ -22,7 +22,7 @@ from relaisCommand import relaisCommand
 from readValue import readValue
 from findImage import findImage
 from removeVerticalLines import removeLines
-from fft import fft, getPath
+from brt2p_func import fft, oxyMeter, getPath
 
 #general setting, needed for all devices
 import settings as sets
@@ -32,8 +32,6 @@ def main():
 	#database
 	dbConn = mysql.connector.connect(user='Sofie', password='MySQLw@chtw00rd',host='127.0.0.1',database='masterproef')
 	cursor = dbConn.cursor()			#sends queries to the db
-	#ocr
-	ocr = easyocr.Reader(['en'])
 	#connenction with serial conn
 	conn=serial.Serial(port=sets.serconn,baudrate=19200,bytesize=EIGHTBITS,timeout=3) 
 	conn.read(100)
@@ -183,10 +181,6 @@ def main():
 		print("refS not ok")
 	#active inputs not shorted
 	relaisCommand(conn,6,sets.cards,4)					#switch relais to voltage divider mode
-	clickButton("./images/referenceInput.png")			#switch to active input screen
-	time.sleep(0.1)
-	clickButton("./images/activeInput.png")
-	time.sleep(5)										#give it some time to load
 	correct = 0
 	conn.read(100)										#empty relais buffer
 	for i in range(len(sets.x1)):						#for every input
@@ -201,13 +195,13 @@ def main():
 				break
 			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
 		if test:
-			corrrect+=1
+			correct+=1
 	if correct == len(sets.x1):
 		activeNotShorted = True
 		print("activeNS ok")
 	else:
 		print("aciveNS not ok")
-	relaisCommand(conn,7,sets.card,relais)				#turn off last relais for next test
+	relaisCommand(conn,7,sets.cards,relais)				#turn off last relais for next test
 	conn.read(4)
 	#active inputs shorted
 	relais = 4											#first relais on this card are for other purposes
@@ -226,13 +220,15 @@ def main():
 				card = 1
 		relaisCommand(conn,6,card,relais)				#switch on relais card
 		conn.read(4)									#clear buffer
-		value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],ocr)
+		value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],"tmp"+str(i+1)+".png")
 		test = False
 		for j in range(sets.maxWait):							#try a coulple of times to give time to settle
-			if (value<=maxSmallImpedence and value !=-1):
+			if (value==0 and value !=-1):
+				break
 				stable = True
 				for i in range(sets.stableImpedence):			#stay stable on correct value for some time
-					if not (value<=maxSmallImpedence and value !=-1):
+					value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],"tmp"+str(i+1)+".png")
+					if not (value<=sets.maxSmallImpedence and value !=-1):
 						stable = False
 						break
 					time.sleep(1)
@@ -241,7 +237,7 @@ def main():
 					test=True
 					break
 			time.sleep(1)
-			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],ocr)
+			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],"tmp"+str(i+1)+".png")
 	if not test:										#test unsuccesfull
 		print("actS not ok")
 	#close the impedence window
@@ -294,7 +290,8 @@ def main():
 	#close current measurement
 	Popen(["taskkill","/IM","BrtTask.exe"])
 	time.sleep(3)					#give program some time to shut down
-	result = fft(getPath())
+	path = getPath()
+	result = fft(path)
 	correct = 0
 	for item in result:
 	#TODO: check of die 4 wel klopt
@@ -304,7 +301,7 @@ def main():
 		print("signalRef ok")
 	else:
 		print("signalRef not ok")
-	if oxymeter(getPath())[0] == 98.0 and  oxymeter(getPath())[1] == 80.0:
+	if oxyMeter(path)[0] == 98.0 and oxyMeter(path)[1] == 80.0:
 		print("oxymeter ok")
 	else:
 		print("oxymeter not ok")
