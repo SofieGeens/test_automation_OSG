@@ -39,3 +39,15 @@ def checkCableTobt(conn):
 					break
 				time.sleep(1)
 				wait+=1
+
+def checkCable():
+	for i in range(sets.maxWait):							#try for some time, if it takes to long, decide i doesn't work
+		x,y = imagesearch("./images/cable.png")				#find the correct pixel
+		if x!= -1:
+			s = pag.screenshot()
+			color = s.getpixel((x,y))
+			if color[0]<5 and color[1]>130 and color[2]<5:	#values close to the green color used
+				print("cable ok")
+				return True	
+		time.sleep(1)
+	return False

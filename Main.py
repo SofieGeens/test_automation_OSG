@@ -1,4 +1,5 @@
 #cards have a weird order now, most important and most used card is last, because it doesn't work as the third one
+#for now results are written to a .txt file
 #import librairies
 import time
 import serial
@@ -17,18 +18,19 @@ from subprocess import Popen
 from clickButton import clickButton, clickButtonPrecise, clickButtonPreciseArea
 from clickOnText import clickOnText, clickOnTextOpenCV
 from moveFiles import emptyFolder, moveForUse
-from checkCableTobt import checkCableTobt
+from dataTransition import checkCableTobt, checkCable
 from relaisCommand import relaisCommand
 from readValue import readValue
 from findImage import findImage
 from removeVerticalLines import removeLines
 from brt2p_func import fft, oxyMeter, getPath
+from startMeasurement import startMeasurement
 
 #general setting, needed for all devices
 import settings as sets
 
 def main():
-#set up to use ocr, relais, database and function generator later
+#set up relais, database and function generator later
 	#database
 	dbConn = mysql.connector.connect(user='Sofie', password='MySQLw@chtw00rd',host='127.0.0.1',database='masterproef')
 	cursor = dbConn.cursor()			#sends queries to the db
@@ -46,12 +48,15 @@ def main():
 	adress = rm.list_resources()[0]		#the correct adress (for the function generator) always comes first in the list_resources
 	afg = rm.open_resource(adress)
 	afg.write("*RST")					#reset the function generator
+	#initialise txt file to write results to
+	resultFile = open("testResults.txt".'w')
 
 	#booleans that keep up with wether a test needs to be performed
 	cursor.execute("SELECT testID FROM test WHERE testName = 'morpheus';")
-	testID = cursor.fetchall()[0][0]
+	testID = cursor.fetchall()[0][0]	#testID is foreign key in all other tables of database
 	cursor.execute("SELECT * FROM testparameters WHERE testID = " + str(testID) + ";")
 	result = cursor.fetchall()[0]
+	#booleans that keep up with wether a test needs to be performed
 	oxymeter = result[1]	#heartrate and saturation
 	bodypos = result[2]		#bodyposition
 	impRef = result[3]		#reference impedence
@@ -72,67 +77,49 @@ def main():
 		pass
 	#empty map where protocols are stored and only put needed protocols in there
 	emptyFolder()
-	moveForUse(sets.protocolFiles.get("morpheus_ref"))
-	#open Shell+ again and wait for it to start up properly
+	cursor.execute("SELECT protocolName, fileName FROM protocols WHERE testID = "+str(testID)+";")
+	result = fname = cursor.fetchall()
+	if sigBip:													#bipolar signal means there are 2 protocols needed, that means there is "ref" in the name of the first protocol we need
+		if "ref" in result[0][1]:
+			fname = reslt[0][0]
+		else:													#otherwise, there is only one protocol, so we need that one
+			fname = result[1][0]
+	else: 
+		fname = result[0][0]
+	moveForUse(fname)
+	#open Shell+ again, wait for it to start up properly and start the measurement
 	Popen(sets.pathToShellPlus)
 	time.sleep(15)
-	#start new measurement with keyboard shortcuts
-	pag.keyDown("alt")
-	pag.keyDown("b")
-	pag.keyUp("alt")
-	pag.keyUp("b")
-	pag.press("n")
-	pag.write("test")
-	pag.press("enter")
-	pag.press("enter")
-	while not clickButton("./images/starten.png"):
-		pass
-	startrec = False
-	#start the recorcing
-	for i in range(sets.maxWait):
-		if clickButtonPrecise("./images/record.png"):
-			startrec = True
-			break
-		time.sleep(1)
-	#exit out of program if recorder could not be found
-	if not startrec:
-		print("de recorder kon niet gevonden worden")
-		exit()
-	pag.move(500,500) #move the mouse out of the way so that no hover pop up apears
+	startMeasurement()
 #data transition
-	#wait for everything to be initialized well
-	wait=0
-	while(1):	
-		x,y = imagesearch("./images/cable.png")				#find the correct pixel
-		if x!= -1:
-			s = pag.screenshot()
-			color = s.getpixel((x,y))
-			if color[0]<5 and color[1]>130 and color[2]<5:	#values close to the green color used
-				print("cable ok")
+	checkCable()											#wait for cable connection to be fully settled
+	if cTobt:
+		relaisCommand(conn,6,sets.cards,1)						#interrupt cable between device and computer to switch to bluetooth mode, this takes a while to work so we go to the next step and check again after checking the SaO2 with checkCableTobt function
+#check SaO2 signal
+	if oxymeter:
+		#chek if the pulse signal comes trough by looking for an image match, this is possible because the signal is always the same because of the use of a virtual patient
+		pulsesig=False
+		for i in range(sets.maxWait):							#try maxWait times before deciding it is not correct
+			x,y = imagesearch("./images/pulsesignal.png")
+			if x != -1:											#signal found, the signal has the correct shape
+				pulsesig = True
+				resultFile.write("pulsesignaal ok")
 				break
-		if wait >= sets.maxWait:							#waited to long, decide it doesn't work
-			print("cable not ok")
-			break	
-		time.sleep(1)
-		wait+=1
-	relaisCommand(conn,6,sets.cards,1)						#interrupt cable between device and computer to switch to bluetooth mode
-	#this takes a while to work so we go to the next step and check again after checking the SaO2 with checkCableTobt function
-#check SaO2 signals
-	#chek if the pulse signal comes trough by looking for an image match, this is possible because the signal is always the same because of the use of a virtual patient
-	pulsesig=False
-	for i in range(sets.maxWait):							#try maxWait times before deciding it is not correct
-		x,y = imagesearch("./images/pulsesignal.png")
-		if x != -1:
-			pulsesig = True
-			print("pulsesignal ok")
-			break
-		time.sleep(1)
-	if not pulsesig:
-		print("pulsesignal not ok")
+			time.sleep(1)
+		if not pulsesig:
+			resultFile.write("pulsesignaal niet ok")
 #data transmission transition
-	print("data transition")
-	btTocable = checkCableTobt(conn)
-
+	if cTobt:
+		print("data transition")								#for debugging
+		if checkCableTobt(conn):
+			resultFile.write("cable naar bluetooth ok")
+		else:
+			resultFile.write("cable naar bluetooth niet ok")
+	if btToc:
+		if checkCable(): 
+			resultFile.write("bluetooth naar cable ok")
+		else:
+			resultFile.write("bluetooth naar cable niet ok")
 #impedence check
 	time.sleep(3)
 	#start impedence measurement
@@ -243,16 +230,7 @@ def main():
 	#close the impedence window
 	clickButton("./images/closeImpedence.png")
 #start new measurement to get clean data, because some other measurements stop during impedance check
-	Popen(["taskkill","/IM","BrtTask.exe"])
-	pag.keyDown("alt")
-	pag.keyDown("b")
-	pag.keyUp("alt")
-	pag.keyUp("b")
-	pag.press("n")
-	pag.write("test")
-	pag.press("enter")
-	pag.press("enter")
-	clickButton("./images/starten.png")
+	startMeasurement()
 #signal check and oxymeter check
 	#niet nodig?
 	"""
@@ -316,15 +294,7 @@ def main():
 	Popen(sets.pathToShellPlus)
 	time.sleep(15)
 	#start new measurement
-	pag.keyDown("alt")
-	pag.keyDown("b")
-	pag.keyUp("alt")
-	pag.keyUp("b")
-	pag.press("n")
-	pag.write("test")
-	pag.press("enter")
-	pag.press("enter")
-	clickButton("./images/starten.png")
+	startMeasurement()
 	#let signal go trough for every input
 	relaisCommand(conn,3,sets.cards,250)
 	conn.read(4)
@@ -356,23 +326,15 @@ def main():
 	#open Shell+ again and wait for it to start up properly
 	Popen(sets.pathToShellPlus)
 	time.sleep(15)
-	#start new measurement with keyboard shortcuts
-	pag.keyDown("alt")
-	pag.keyDown("b")
-	pag.keyUp("alt")
-	pag.keyUp("b")
-	pag.press("n")
-	pag.write("test")
-	pag.press("enter")
-	pag.press("enter")
-	while not clickButton("./images/starten.png"):
-		pass
+	#start new measurement
+	startMeasurement()
 	input("change bodyposition, press enter to continue")
 	print("check Pdiff and Pgage, press enter to continue")
 	#TODO: close BrainRT
 	#TODO: make rapport
-#close the serial connection, database connection and cursor on database
+#close the serial connection, textfile, database connection and cursor on database
 	conn.close()
+	resultFile.close()
 	cursor.close()
 	dbConn.close()
 
