@@ -16,12 +16,10 @@ from subprocess import Popen
 
 #import functions from other files
 from clickButton import clickButton, clickButtonPrecise, clickButtonPreciseArea
-from clickOnText import clickOnText, clickOnTextOpenCV
 from moveFiles import emptyFolder, moveForUse
 from dataTransition import checkCableTobt, checkCable
 from relaisCommand import relaisCommand
 from readValue import readValue
-from findImage import findImage
 from removeVerticalLines import removeLines
 from brt2p_func import fft, oxyMeter, getPath
 from startMeasurement import startMeasurement
@@ -78,10 +76,10 @@ def main():
 	#empty map where protocols are stored and only put needed protocols in there
 	emptyFolder()
 	cursor.execute("SELECT protocolName, fileName FROM protocols WHERE testID = "+str(testID)+";")
-	result = fname = cursor.fetchall()
+	result = cursor.fetchall()
 	if sigBip:													#bipolar signal means there are 2 protocols needed, that means there is "ref" in the name of the first protocol we need
 		if "ref" in result[0][1]:
-			fname = reslt[0][0]
+			fname = result[0][0]
 		else:													#otherwise, there is only one protocol, so we need that one
 			fname = result[1][0]
 	else: 
@@ -111,6 +109,7 @@ def main():
 #data transmission transition
 	if cTobt:
 		print("data transition")								#for debugging
+		#TODO: TODO in dataTransition.py
 		if checkCableTobt(conn):
 			resultFile.write("cable naar bluetooth ok")
 		else:
@@ -121,114 +120,117 @@ def main():
 		else:
 			resultFile.write("bluetooth naar cable niet ok")
 #impedence check
+	if impRef:
 	time.sleep(3)
-	#start impedence measurement
-	clickButton("./images/impedence.png")
-	#reference input not shorted
-	while not clickButton("./images/activeInput.png"):		#switch to reference input screen
-		pass
-	while not clickButton("./images/referenceInput.png"):
-		pass
-	relaisCommand(conn,3,sets.cards,6)						#set relais to voltage divider
-	wait = 0
-	test=True
-	#TODO: use tesseract again
-	value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3],ocr)
-	while not value>sets.minBigImpedence:					#impedence should be big
-		wait += 1
-		time.sleep(1)
-		if wait >= sets.maxWait:							#waited to long, decide test was unsuccesfull
-			test=False
-			break
-		value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3],ocr)
-	if test: 
-		referenceNotShorted = True
-		print("refNS ok")
-	else:
-		print("refNS not ok")
-	#reference input shorted
-	relaisCommand(conn,7,sets.cards,4)						#set relais to short
-	value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3])
-	test = False
-	for i in range(sets.maxWait):							#try a coulple of times to give time to settle
-		if (value<=maxSmallImpedence and value !=-1):
-			stable = True
-			for i in range(sets.stableImpedence):			#stay stable on correct value for some time
-				if not (value<=maxSmallImpedence and value !=-1):
-					stable = False
-					break
-				time.sleep(1)
-			if stable:
-				print("refS ok")
-				test=True
-				break
-		time.sleep(1)
-		value = readValue(sets.refImp[0],sets.refImp[1],sets.refImp[2],sets.refImp[3])
-	if not test:										#test unsuccesfull
-		print("refS not ok")
-	#active inputs not shorted
-	relaisCommand(conn,6,sets.cards,4)					#switch relais to voltage divider mode
-	correct = 0
-	conn.read(100)										#empty relais buffer
-	for i in range(len(sets.x1)):						#for every input
+		#start impedence measurement
+		#TODO: TODO in clickButton.py
+		clickButton("./images/impedence.png")
+		#reference input not shorted
+		while not clickButton("./images/activeInput.png"):		#switch to reference input screen
+			pass
+		while not clickButton("./images/referenceInput.png"):
+			pass
+		relaisCommand(conn,3,sets.cards,6)						#set relais to voltage divider
 		wait = 0
 		test=True
-		value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
-		while not value>sets.minBigImpedence:
+		cursor.execute("SELECT x1, y1, x2, y2, inputName FROM coordinates WHERE testID = "+str(testID)+" ORDER BY inputID;")
+		result = cursor.fetchall()
+		value = readValue(result[0][0],result[0][1],result[0][2],result[0][3],result[0][4]+"_NS.png")
+		while not value>sets.minBigImpedence:					#impedence should be big
 			wait += 1
 			time.sleep(1)
-			if wait >= sets.maxWait:					#waited to long, decide it doesn't work
+			if wait >= sets.maxWait:							#waited to long, decide test was unsuccesfull
 				test=False
 				break
-			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i])
-		if test:
-			correct+=1
-	if correct == len(sets.x1):
-		activeNotShorted = True
-		print("activeNS ok")
-	else:
-		print("aciveNS not ok")
-	relaisCommand(conn,7,sets.cards,relais)				#turn off last relais for next test
-	conn.read(4)
-	#active inputs shorted
-	relais = 4											#first relais on this card are for other purposes
-	card = sets.cards									#weird order in cards because one doesn't fully work, will get fixed
-	relaisCommand(conn,7,sets.cards,2)					#switch from voltage divider to shorted
-	conn.read(4)										#clear buffer
-	correct=0
-	for i in range(len(sets.x1)):
-		relaisCommand(conn,7,card,relais)				#turn off relais of previous measurement
-		conn.read(4)									#clear buffer
-		relais *= 2										#relais adress works by setting bit on high, ex.: 00100000 is the 6th relais, 00000100 is the 3th relais, to go to next relais, bitshift to left of multiply by 2 
-		if relais > 128:								#out of relais on this card, go to first relais of next card
-			relais = 1
-			card += 1
-			if card==sets.cards+1:						#because of weird order of relais cards, will get fixed
-				card = 1
-		relaisCommand(conn,6,card,relais)				#switch on relais card
-		conn.read(4)									#clear buffer
-		value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],"tmp"+str(i+1)+".png")
+			value = readValue(result[0][0],result[0][1],result[0][2],result[0][3],result[0][4]+"_NS.png")
+		if test: 
+			referenceNotShorted = True
+			resultFile.write("referentie input impedantie niet kortgesloten ok")
+		else:
+			resultFile.write("referentie input impedantie niet kortgesloten niet ok")
+		#reference input shorted
+		relaisCommand(conn,7,sets.cards,4)						#set relais to short
+		value = readValue(result[0][0],result[0][1],result[0][2],result[0][3],result[0][4]+"_S.png")
 		test = False
-		for j in range(sets.maxWait):							#try a coulple of times to give time to settle
-			if (value==0 and value !=-1):
-				break
+		for i in range(sets.maxWait):							#try a coulple of times to give time to settle
+			if (value<=maxSmallImpedence and value !=-1):
 				stable = True
 				for i in range(sets.stableImpedence):			#stay stable on correct value for some time
-					value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],"tmp"+str(i+1)+".png")
-					if not (value<=sets.maxSmallImpedence and value !=-1):
+					if not (value<=maxSmallImpedence and value !=-1):
 						stable = False
 						break
 					time.sleep(1)
 				if stable:
-					print("actS ok")
+					resultFile.write("referentie input impedantie kortgesloten ok")
 					test=True
 					break
 			time.sleep(1)
+			value = readValue(result[0][0],result[0][1],result[0][2],result[0][3],result[0][4]+"_S.png")
+		if not test:										#test unsuccesfull
+			resultFile.write("referentie input impedantie kortgesloten niet ok")
+		#active inputs not shorted
+		relaisCommand(conn,6,sets.cards,4)					#switch relais to voltage divider mode
+		correct = 0
+		conn.read(100)										#empty relais buffer
+		for i in range(len(sets.x1)):						#for every input
+			wait = 0
+			test=True
+			value = readValue(result[i+1][0],result[i+1][1],result[i+1][2],result[i+1][3],result[i+1][4]+"_NS.png") #i+1 because first value (index 0) in result is reference input 
+			while not value>sets.minBigImpedence:
+				wait += 1
+				time.sleep(1)
+				if wait >= sets.maxWait:					#waited to long, decide it doesn't work
+					test=False
+					break
+				value = readValue(result[i+1][0],result[i+1][1],result[i+1][2],result[i+1][3],result[i+1][4]+"_NS.png")
+			if test:
+				correct+=1
+		if correct == len(sets.x1):
+			activeNotShorted = True
+			resultFile.write("active inputs niet kortgesloten ok")
+		else:
+			resultFile.write("active inputs niet kortgesloten niet ok")
+		relaisCommand(conn,7,sets.cards,relais)				#turn off last relais for next test
+		conn.read(4)
+		#active inputs shorted
+		relais = 4											#first relais on this card are for other purposes
+		card = sets.cards									#weird order in cards because one doesn't fully work, will get fixed
+		relaisCommand(conn,7,sets.cards,2)					#switch from voltage divider to shorted
+		conn.read(4)										#clear buffer
+		correct=0
+		for i in range(len(sets.x1)):
+			relaisCommand(conn,7,card,relais)				#turn off relais of previous measurement
+			conn.read(4)									#clear buffer
+			relais *= 2										#relais adress works by setting bit on high, ex.: 00100000 is the 6th relais, 00000100 is the 3th relais, to go to next relais, bitshift to left of multiply by 2 
+			if relais > 128:								#out of relais on this card, go to first relais of next card
+				relais = 1
+				card += 1
+				if card==sets.cards+1:						#because of weird order of relais cards, will get fixed
+					card = 1
+			relaisCommand(conn,6,card,relais)				#switch on relais card
+			conn.read(4)									#clear buffer
 			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],"tmp"+str(i+1)+".png")
-	if not test:										#test unsuccesfull
-		print("actS not ok")
-	#close the impedence window
-	clickButton("./images/closeImpedence.png")
+			test = False
+			for j in range(sets.maxWait):							#try a coulple of times to give time to settle
+				if (value==0 and value !=-1):
+					break
+					stable = True
+					for i in range(sets.stableImpedence):			#stay stable on correct value for some time
+						value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],"tmp"+str(i+1)+".png")
+						if not (value<=sets.maxSmallImpedence and value !=-1):
+							stable = False
+							break
+						time.sleep(1)
+					if stable:
+						print("actS ok")
+						test=True
+						break
+				time.sleep(1)
+				value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],"tmp"+str(i+1)+".png")
+		if not test:										#test unsuccesfull
+			print("actS not ok")
+		#close the impedence window
+		clickButton("./images/closeImpedence.png")
 #start new measurement to get clean data, because some other measurements stop during impedance check
 	startMeasurement()
 #signal check and oxymeter check
@@ -269,7 +271,8 @@ def main():
 	Popen(["taskkill","/IM","BrtTask.exe"])
 	time.sleep(3)					#give program some time to shut down
 	path = getPath()
-	result = fft(path)
+	#TODO: TODO in fft function (brt2p_func)
+	result = fft(path)	
 	correct = 0
 	for item in result:
 	#TODO: check of die 4 wel klopt
@@ -316,7 +319,6 @@ def main():
 		print("signalBip not ok")
 #onboard sensors (comes last because a person is needed to perform these actions)
 	#get back to reference test
-	#TODO: fix that it opens without clickOnText
 	#close Shell+ if still open and give enough time to close properly
 	Popen(["taskkill","/IM","C:\Program Files (x86)\BrainRT\ShellPlus.exe"])
 	time.sleep(1)

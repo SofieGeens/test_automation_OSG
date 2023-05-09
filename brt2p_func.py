@@ -1,15 +1,14 @@
 import glob
 import os
-import time
 import numpy as np
 import settings as sets
 from codeBRT.parsing.interface.generic_type import ChannelType, EventType, Spo2ChannelSubtype
 from codeBRT.parsing.brt.reader import BrtMeasurementReader
 from scipy.fft import fft, fftfreq
-from matplotlib import pyplot as plt
 
 def getPath():
-	list_of_files = glob.glob('C:\ProgramData\OSG\BrainRT\Signals\Online\*.sig')
+	#returns the most recent file ending in -hrd.sig, this is the filetype needed to use Brt2python
+	list_of_files = glob.glob('C:\ProgramData\OSG\BrainRT\Signals\Online\*.sig')		#get all .sig files from correct path
 	latest_file = ''
 	while(True):
 		latest_file = max(list_of_files, key=os.path.getctime)
@@ -17,7 +16,7 @@ def getPath():
 			break
 		else:
 			list_of_files.remove(latest_file)
-	# Define path to PSG sig files. Important: path should end with '-hdr.sig'!
+	#TODO: does this work? 
 	path = latest_file #r'%s' % latest_file
 	return path
 
@@ -25,15 +24,16 @@ def getPath():
 def fft(path):
 	#returns list containing a list for each channel containing a list with all unignorable frequencies and the amplitude of the highest signal
 	freqAndAmp = []
+	#TODO: get this information from DB
 	for channel in sets.channelList:
 		# Define reader and get list of all channels
 		result = []
 		reader = BrtMeasurementReader(path)
 		channels = reader.channel_list
 		data_eeg = reader.read_data(ChannelType.EEG)	#data of all EEG channels
-		data = data_eeg[channel][0].data
-		sampleRate = data_eeg[channel][0].sampling_rate
-		N = len(data_eeg[channel][0].data)
+		data = data_eeg[channel][0].data				#datapoints of signal on channel, 0 because I look at the first file, sometimes multiple files are made, does not apply on this project
+		sampleRate = data_eeg[channel][0].sampling_rate	#sample rate
+		N = len(data_eeg[channel][0].data)				#number of datapoints
 		fftx = fftfreq(N,1/sampleRate).tolist()
 		fftx = fftx[int(len(fftx)/2):]					#only look at second half of values, others are mirrored over zero, we only need positive values
 		ffty = fft(data).tolist()
@@ -65,29 +65,25 @@ def oxyMeter(path):
 	return info
 
 def findMostFrequent(arr):
-  
+	#returns the value that is the most frequent in an array
     # Sort the array
     arr.sort()
-  
     # find the max frequency using
     # linear traversal
     max_count = 1
     res = arr[0]
     curr_count = 1
-  
     for i in range(1, len(arr)):
         if (arr[i] == arr[i - 1]):
             curr_count += 1
         else:
             curr_count = 1
-  
          # If last element is most frequent
         if (curr_count > max_count):
             max_count = curr_count
             res = arr[i - 1]
-  
     return res
 
-
+#for testing purposes
 #print(fft('C:\ProgramData\OSG\BrainRT\Signals\Online\osg_00000_0000145-hdr.sig'))
 #print(oxyMeter('C:\ProgramData\OSG\BrainRT\Signals\Online\osg_00000_0000145-hdr.sig'))

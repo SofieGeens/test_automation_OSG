@@ -1,6 +1,7 @@
 from python_imagesearch.imagesearch import imagesearch, imagesearcharea
 import pyautogui as pag
 
+#TODO change back to pyautogui method or write about it in text
 def clickButton(img):
     x,y = imagesearch(img)
     if x != -1:

@@ -15,7 +15,7 @@ def startMeasurement():
 		pass
 	startrec = False
 	#start the recorcing
-	for i in range(sets.maxWait):
+	for i in range(sets.maxWait):						#wait for this button to appear, then click it
 		if clickButtonPrecise("./images/record.png"):
 			startrec = True
 			break
