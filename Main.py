@@ -17,7 +17,7 @@ from subprocess import Popen
 #import functions from other files
 from clickButton import clickButton, clickButtonPrecise, clickButtonPreciseArea
 from moveFiles import emptyFolder, moveForUse
-from dataTransition import checkCableTobt, checkCable
+from dataTransition import checkBt, checkCable
 from relaisCommand import relaisCommand
 from readValue import readValue
 from removeVerticalLines import removeLines
@@ -90,7 +90,7 @@ def main():
 	time.sleep(15)
 	startMeasurement()
 #data transition
-	checkCable()											#wait for cable connection to be fully settled
+	checkCable()												#wait for cable connection to be fully settled
 	if cTobt:
 		relaisCommand(conn,6,sets.cards,1)						#interrupt cable between device and computer to switch to bluetooth mode, this takes a while to work so we go to the next step and check again after checking the SaO2 with checkCableTobt function
 #check SaO2 signal
@@ -108,12 +108,12 @@ def main():
 			resultFile.write("pulsesignaal niet ok")
 #data transmission transition
 	if cTobt:
-		print("data transition")								#for debugging
 		#TODO: TODO in dataTransition.py
-		if checkCableTobt(conn):
+		if checkBt(conn):
 			resultFile.write("cable naar bluetooth ok")
 		else:
 			resultFile.write("cable naar bluetooth niet ok")
+	relaisCommand(conn,7,sets.cards,1)							#reconnect cable
 	if btToc:
 		if checkCable(): 
 			resultFile.write("bluetooth naar cable ok")
