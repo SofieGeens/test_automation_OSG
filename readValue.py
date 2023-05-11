@@ -1,4 +1,4 @@
-import easyocr
+import pytesseract
 import numpy as np
 import settings as sets
 from PIL import Image, ImageGrab, ImageEnhance

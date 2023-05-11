@@ -1,11 +1,10 @@
-#cards have a weird order now, most important and most used card is last, because it doesn't work as the third one
+#cards have a weird order now, most important and most used card is last, because it doesn't work as the first one
 #for now results are written to a .txt file
 #import librairies
 import time
 import serial
 import pyvisa
-import cv2
-import easyocr
+import os
 import mysql.connector
 import pyautogui as pag
 from math import floor
@@ -20,7 +19,6 @@ from moveFiles import emptyFolder, moveForUse
 from dataTransition import checkBt, checkCable
 from relaisCommand import relaisCommand
 from readValue import readValue
-from removeVerticalLines import removeLines
 from brt2p_func import fft, oxyMeter, getPath
 from startMeasurement import startMeasurement
 
@@ -30,7 +28,7 @@ import settings as sets
 def main():
 #set up relais, database and function generator later
 	#database
-	dbConn = mysql.connector.connect(user='Sofie', password='MySQLw@chtw00rd',host='127.0.0.1',database='masterproef')
+	dbConn = mysql.connector.connect(user= os.environ.get('MYSQLUSER_OSG'), password=os.environ.get('MYSQLPASSWORD_OSG'),host='127.0.0.1',database='masterproef')
 	cursor = dbConn.cursor()			#sends queries to the db
 	#connenction with serial conn
 	conn=serial.Serial(port=sets.serconn,baudrate=19200,bytesize=EIGHTBITS,timeout=3) 
@@ -42,57 +40,56 @@ def main():
 	relaisCommand(conn,3,0,0)			#reset all relais to off
 	relaisCommand(conn,6,sets.cards,2)	#turn on G2, otherwise nothing can be measured
 	#function generator
+	"""
 	rm = pyvisa.ResourceManager()
 	adress = rm.list_resources()[0]		#the correct adress (for the function generator) always comes first in the list_resources
 	afg = rm.open_resource(adress)
 	afg.write("*RST")					#reset the function generator
+	"""
 	#initialise txt file to write results to
-	resultFile = open("testResults.txt".'w')
+	resultFile = open("testResults.txt",'w')
 
 	#booleans that keep up with wether a test needs to be performed
 	cursor.execute("SELECT testID FROM test WHERE testName = 'morpheus';")
 	testID = cursor.fetchall()[0][0]	#testID is foreign key in all other tables of database
-	cursor.execute("SELECT * FROM testparameters WHERE testID = " + str(testID) + ";")
+	cursor.execute("SELECT oxy,bodypos,impRef,impAct,sig,sigBip,press,flash,button,cb FROM testparameters WHERE testId = " + str(testID) + ";")
 	result = cursor.fetchall()[0]
 	#booleans that keep up with wether a test needs to be performed
-	oxymeter = result[1]	#heartrate and saturation
-	bodypos = result[2]		#bodyposition
-	impRef = result[3]		#reference impedence
-	impAct = result[4]		#active impedence
-	sig = result[5]			#signal waveform
-	sigBip = result[6]		#bipolar signal waveform
-	press = result[7]		#pressure sensors
-	flash = result[8]		#flash light
-	button = result[9]		#event button
-	btToc = result[10]		#bluetooth to cable
-	cTobt = result[11]		#cable to bluetooth
+	oxymeter = result[0]	#heartrate and saturation
+	bodypos = result[1]		#bodyposition
+	impRef = result[2]		#reference impedence
+	impAct = result[3]		#active impedence
+	sig = result[4]			#signal waveform
+	sigBip = result[5]		#bipolar signal waveform
+	press = result[6]		#pressure sensors
+	flash = result[7]		#flash light
+	button = result[8]		#event button
+	cb = result[9]			#data transition between cable and bluetooth
 #start recording
 	#close Shell+ if still open and give enough time to close properly
 	try:
-		Popen(["taskkill","/IM","C:\Program Files (x86)\BrainRT\ShellPlus.exe"])
+		os.system("taskkill /f /im ShellPlus.exe")
 		time.sleep(1)
 	except:
 		pass
 	#empty map where protocols are stored and only put needed protocols in there
 	emptyFolder()
-	cursor.execute("SELECT protocolName, fileName FROM protocols WHERE testID = "+str(testID)+";")
-	result = cursor.fetchall()
-	if sigBip:													#bipolar signal means there are 2 protocols needed, that means there is "ref" in the name of the first protocol we need
-		if "ref" in result[0][1]:
-			fname = result[0][0]
-		else:													#otherwise, there is only one protocol, so we need that one
-			fname = result[1][0]
-	else: 
-		fname = result[0][0]
+	cursor.execute("SELECT fileName FROM protocols WHERE testID = "+str(testID)+" ORDER BY protocolId;")
+	result = cursor.fetchall() 
+	print(result)
+	fname = result[0][0]
 	moveForUse(fname)
 	#open Shell+ again, wait for it to start up properly and start the measurement
 	Popen(sets.pathToShellPlus)
 	time.sleep(15)
 	startMeasurement()
+	"""
 #data transition
 	checkCable()												#wait for cable connection to be fully settled
-	if cTobt:
+	if cb:
 		relaisCommand(conn,6,sets.cards,1)						#interrupt cable between device and computer to switch to bluetooth mode, this takes a while to work so we go to the next step and check again after checking the SaO2 with checkCableTobt function
+	else:
+		print("probleem")
 #check SaO2 signal
 	if oxymeter:
 		#chek if the pulse signal comes trough by looking for an image match, this is possible because the signal is always the same because of the use of a virtual patient
@@ -101,48 +98,51 @@ def main():
 			x,y = imagesearch("./images/pulsesignal.png")
 			if x != -1:											#signal found, the signal has the correct shape
 				pulsesig = True
-				resultFile.write("pulsesignaal ok")
+				resultFile.write("pulsesignaal ok \n")
 				break
 			time.sleep(1)
 		if not pulsesig:
-			resultFile.write("pulsesignaal niet ok")
+			resultFile.write("pulsesignaal niet ok\n")
 #data transmission transition
-	if cTobt:
+	if cb:
 		#TODO: TODO in dataTransition.py
 		if checkBt(conn):
-			resultFile.write("cable naar bluetooth ok")
+			resultFile.write("cable naar bluetooth ok\n")
 		else:
-			resultFile.write("cable naar bluetooth niet ok")
+			resultFile.write("cable naar bluetooth niet ok\n")
 	relaisCommand(conn,7,sets.cards,1)							#reconnect cable
-	if btToc:
+	if cb:
 		if checkCable(): 
-			resultFile.write("bluetooth naar cable ok")
+			resultFile.write("bluetooth naar cable ok\n")
 		else:
-			resultFile.write("bluetooth naar cable niet ok")
+			resultFile.write("bluetooth naar cable niet ok\n")
+	"""
 #impedence check
 	if impRef:
-	time.sleep(3)
+		time.sleep(3)
 		#start impedence measurement
 		#TODO: TODO in clickButton.py
 		clickButton("./images/impedence.png")
 		#reference input not shorted
-		while not clickButton("./images/activeInput.png"):		#switch to reference input screen
+		while not clickButtonPrecise("./images/activeInput.png"):		#switch to reference input screen
 			pass
-		while not clickButton("./images/referenceInput.png"):
+		while not clickButtonPrecise("./images/referenceInput.png"):
 			pass
 		relaisCommand(conn,3,sets.cards,6)						#set relais to voltage divider
 		wait = 0
 		test=True
-		cursor.execute("SELECT x1, y1, x2, y2, inputName FROM coordinates WHERE testID = "+str(testID)+" ORDER BY inputID;")
+		cursor.execute("SELECT x1, y1, x2, y2 FROM impedancecoordinates WHERE inputId IN (SELECT DISTINCT inputId FROM inputs WHERE testId = "+str(testID)+") ORDER BY inputId;")
 		result = cursor.fetchall()
-		value = readValue(result[0][0],result[0][1],result[0][2],result[0][3],result[0][4]+"_NS.png")
+		cursor.execute("SELECT inputName FROM inputs where  testId = "+str(testID)+" ORDER BY inputId;")
+		names = cursor.fetchall()
+		value = readValue(result[0][0],result[0][1],result[0][2],result[0][3],names[0][0]+"_NS.png")
 		while not value>sets.minBigImpedence:					#impedence should be big
 			wait += 1
 			time.sleep(1)
 			if wait >= sets.maxWait:							#waited to long, decide test was unsuccesfull
 				test=False
 				break
-			value = readValue(result[0][0],result[0][1],result[0][2],result[0][3],result[0][4]+"_NS.png")
+			value = readValue(result[0][0],result[0][1],result[0][2],result[0][3],names[0][0]+"_NS.png")
 		if test: 
 			referenceNotShorted = True
 			resultFile.write("referentie input impedantie niet kortgesloten ok")
@@ -150,13 +150,13 @@ def main():
 			resultFile.write("referentie input impedantie niet kortgesloten niet ok")
 		#reference input shorted
 		relaisCommand(conn,7,sets.cards,4)						#set relais to short
-		value = readValue(result[0][0],result[0][1],result[0][2],result[0][3],result[0][4]+"_S.png")
+		value = readValue(result[0][0],result[0][1],result[0][2],result[0][3],names[0][0]+"_S.png")
 		test = False
 		for i in range(sets.maxWait):							#try a coulple of times to give time to settle
-			if (value<=maxSmallImpedence and value !=-1):
+			if (value<=sets.maxSmallImpedence and value !=-1):
 				stable = True
 				for i in range(sets.stableImpedence):			#stay stable on correct value for some time
-					if not (value<=maxSmallImpedence and value !=-1):
+					if not (value<=sets.maxSmallImpedence and value !=-1):
 						stable = False
 						break
 					time.sleep(1)
@@ -165,32 +165,32 @@ def main():
 					test=True
 					break
 			time.sleep(1)
-			value = readValue(result[0][0],result[0][1],result[0][2],result[0][3],result[0][4]+"_S.png")
+			value = readValue(result[0][0],result[0][1],result[0][2],result[0][3],names[0][0]+"_S.png")
 		if not test:										#test unsuccesfull
 			resultFile.write("referentie input impedantie kortgesloten niet ok")
 		#active inputs not shorted
 		relaisCommand(conn,6,sets.cards,4)					#switch relais to voltage divider mode
 		correct = 0
 		conn.read(100)										#empty relais buffer
-		for i in range(len(sets.x1)):						#for every input
+		for i in range(1,len(result)):						#for every input
 			wait = 0
 			test=True
-			value = readValue(result[i+1][0],result[i+1][1],result[i+1][2],result[i+1][3],result[i+1][4]+"_NS.png") #i+1 because first value (index 0) in result is reference input 
+			value = readValue(result[i][0],result[i][1],result[i][2],result[i][3],names[i][0]+"_NS.png") #i+1 because first value (index 0) in result is reference input 
 			while not value>sets.minBigImpedence:
 				wait += 1
 				time.sleep(1)
 				if wait >= sets.maxWait:					#waited to long, decide it doesn't work
 					test=False
 					break
-				value = readValue(result[i+1][0],result[i+1][1],result[i+1][2],result[i+1][3],result[i+1][4]+"_NS.png")
+				value = readValue(result[i][0],result[i][1],result[i][2],result[i][3],names[i][0]+"_NS.png")
 			if test:
 				correct+=1
-		if correct == len(sets.x1):
+		if correct == len(result):
 			activeNotShorted = True
 			resultFile.write("active inputs niet kortgesloten ok")
 		else:
 			resultFile.write("active inputs niet kortgesloten niet ok")
-		relaisCommand(conn,7,sets.cards,relais)				#turn off last relais for next test
+		#relaisCommand(conn,7,sets.cards,relais)				#turn off last relais for next test
 		conn.read(4)
 		#active inputs shorted
 		relais = 4											#first relais on this card are for other purposes
@@ -198,7 +198,7 @@ def main():
 		relaisCommand(conn,7,sets.cards,2)					#switch from voltage divider to shorted
 		conn.read(4)										#clear buffer
 		correct=0
-		for i in range(len(sets.x1)):
+		for i in range(1,len(result)):
 			relaisCommand(conn,7,card,relais)				#turn off relais of previous measurement
 			conn.read(4)									#clear buffer
 			relais *= 2										#relais adress works by setting bit on high, ex.: 00100000 is the 6th relais, 00000100 is the 3th relais, to go to next relais, bitshift to left of multiply by 2 
@@ -209,14 +209,14 @@ def main():
 					card = 1
 			relaisCommand(conn,6,card,relais)				#switch on relais card
 			conn.read(4)									#clear buffer
-			value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],"tmp"+str(i+1)+".png")
+			value = readValue(result[i][0],result[i][1],result[i][2],result[i][3],names[i][0]+"_NS.png")
 			test = False
 			for j in range(sets.maxWait):							#try a coulple of times to give time to settle
 				if (value==0 and value !=-1):
 					break
 					stable = True
 					for i in range(sets.stableImpedence):			#stay stable on correct value for some time
-						value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],"tmp"+str(i+1)+".png")
+						value = readValue(result[i][0],result[i][1],result[i][2],result[i][3],names[i][0]+"_NS.png")
 						if not (value<=sets.maxSmallImpedence and value !=-1):
 							stable = False
 							break
@@ -226,28 +226,16 @@ def main():
 						test=True
 						break
 				time.sleep(1)
-				value = readValue(sets.x1[i],sets.y1[i],sets.x2[i],sets.y2[i],"tmp"+str(i+1)+".png")
+				value = readValue(result[i][0],result[i][1],result[i][2],result[i][3],names[i][0]+"_NS.png")
 		if not test:										#test unsuccesfull
 			print("actS not ok")
 		#close the impedence window
 		clickButton("./images/closeImpedence.png")
+		#TODO: close prev measurement
 #start new measurement to get clean data, because some other measurements stop during impedance check
+	#TODO: fixen met meerder protocols
 	startMeasurement()
 #signal check and oxymeter check
-	#niet nodig?
-	"""
-	#setting some settings to get the view right and compare sine to a correct sine wave
-	clickButtonPrecise("./images/1000MicroV.png")
-	time.sleep(0.2)
-	clickButtonPrecise("./images/2000MicroV.png")
-	time.sleep(0.2)
-	#there is another 2secs button on the top half of the screen
-	clickButtonPreciseArea("./images/10secs.png",0,floor(sets.m_height[0]/2),floor(sets.m_width[0]/2),sets.m_height[0])
-	wait=0
-	while not clickButtonPreciseArea("./images/2secs.png",0,floor(sets.m_height[0]/2),floor(sets.m_width[0]/2),sets.m_height[0]):
-		wait+=1
-		if wait>sets.maxWait:
-			break
 	"""
 	#set signal on function generator (sine, 10Hz 4Vpp)
 	afg.write("FUNCTION SIN")
@@ -339,5 +327,5 @@ def main():
 	resultFile.close()
 	cursor.close()
 	dbConn.close()
-
+	"""
 main()

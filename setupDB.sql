@@ -1,47 +1,53 @@
 DROP TABLE protocols;
 DROP TABLE sigProp;
 DROP TABLE testParameters;
-DROP TABLE coordinates;
+DROP TABLE impedanceCoordinates;
+DROP TABLE inputs;
 DROP TABLE test;
 
 CREATE TABLE test (
-    testID int not null,
-    noports int not null,
+    testId INT NOT NULL,
     testName VARCHAR(10),
-    PRIMARY KEY (testID)
+    PRIMARY KEY (testId)
 );
 
 CREATE TABLE protocols (
-    protocolName VARCHAR(25),
-    fileName VARCHAR(25),
-    testID int not null,
-    PRIMARY KEY (protocolName),
-    FOREIGN KEY (testID) REFERENCES test(testID)
+    protocolId INT NOT NULL,
+    fileName VARCHAR(35),
+    testId INT NOT NULL,
+    PRIMARY KEY (protocolId),
+    FOREIGN KEY (testId) REFERENCES test(testId)
 );
 
 CREATE TABLE sigProp (
-    sigID int not null,
-    freq int not null,
-    amp int not null,
-    shape VARCHAR(3),
-    testID int not null,
-    PRIMARY KEY (sigID),
-    FOREIGN KEY (testID) REFERENCES test(testID)
+    sigId INT NOT NULL,
+    freq INT NOT NULL,
+    amp FLOAT(5) NOT NULL,
+    testId INT NOT NULL,
+    PRIMARY KEY (sigId),
+    FOREIGN KEY (testId) REFERENCES test(testId)
 );
 
-CREATE TABLE coordinates (
-    testID int not null,
-    inputID int not null,
-    x1 int not null,
-    y1 int not null,
-    x2 int not null,
-    y2 int not null,
-    PRIMARY KEY (inputID,testID),
-    FOREIGN KEY (testID) REFERENCES test(testID)
+CREATE TABLE inputs (
+    testId INT NOT NULL,
+    inputId INT NOT NULL,
+    inputName VARCHAR(5),
+    PRIMARY KEY (inputId),
+    FOREIGN KEY (testId) REFERENCES test(testId)
+);
+
+CREATE TABLE impedanceCoordinates (
+    inputId INT NOT NULL,
+    x1 INT NOT NULL,
+    y1 INT NOT NULL,
+    x2 INT NOT NULL,
+    y2 INT NOT NULL,
+    PRIMARY KEY (inputId),
+    FOREIGN KEY (inputId) REFERENCES inputs(inputId)
 );
 
 CREATE TABLE testParameters (
-    testID int not null,
+    testId int not null,
     oxy bit(1),
     bodypos bit(1),
     impRef bit(1),
@@ -51,8 +57,7 @@ CREATE TABLE testParameters (
     press bit(1),
     flash bit(1),
     button bit(1),
-    ctobt bit(1),
-    bttoc bit(1),
-    PRIMARY KEY (testID),
-    FOREIGN KEY (testID) REFERENCES test(testID)
+    cb bit(1),
+    PRIMARY KEY (testId),
+    FOREIGN KEY (testId) REFERENCES test(testId)
 );

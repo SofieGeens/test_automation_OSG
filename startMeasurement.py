@@ -1,5 +1,7 @@
 import pyautogui as pag
-from clickButton import clickButton
+from clickButton import clickButton, clickButtonPrecise
+import time
+import settings as sets
 
 def startMeasurement():
 	#start new measurement with keyboard shortcuts
