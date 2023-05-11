@@ -14,7 +14,6 @@ from subprocess import Popen
 
 
 #import functions from other files
-from clickButton import clickButton, clickButtonPrecise, clickButtonPreciseArea
 from moveFiles import emptyFolder, moveForUse
 from dataTransition import checkBt, checkCable
 from relaisCommand import relaisCommand
@@ -40,12 +39,10 @@ def main():
 	relaisCommand(conn,3,0,0)			#reset all relais to off
 	relaisCommand(conn,6,sets.cards,2)	#turn on G2, otherwise nothing can be measured
 	#function generator
-	"""
 	rm = pyvisa.ResourceManager()
 	adress = rm.list_resources()[0]		#the correct adress (for the function generator) always comes first in the list_resources
 	afg = rm.open_resource(adress)
 	afg.write("*RST")					#reset the function generator
-	"""
 	#initialise txt file to write results to
 	resultFile = open("testResults.txt",'w')
 
@@ -75,15 +72,13 @@ def main():
 	#empty map where protocols are stored and only put needed protocols in there
 	emptyFolder()
 	cursor.execute("SELECT fileName FROM protocols WHERE testID = "+str(testID)+" ORDER BY protocolId;")
-	result = cursor.fetchall() 
-	print(result)
-	fname = result[0][0]
+	protocols = cursor.fetchall() 
+	fname = protocols[0][0]
 	moveForUse(fname)
 	#open Shell+ again, wait for it to start up properly and start the measurement
 	Popen(sets.pathToShellPlus)
 	time.sleep(15)
 	startMeasurement()
-	"""
 #data transition
 	checkCable()												#wait for cable connection to be fully settled
 	if cb:
@@ -116,18 +111,16 @@ def main():
 			resultFile.write("bluetooth naar cable ok\n")
 		else:
 			resultFile.write("bluetooth naar cable niet ok\n")
-	"""
 #impedence check
 	if impRef:
 		time.sleep(3)
 		#start impedence measurement
-		#TODO: TODO in clickButton.py
-		clickButton("./images/impedence.png")
+		pag.click(x=sets.impedance[0],y=sets.impedance[1])
+		time.sleep(3)
 		#reference input not shorted
-		while not clickButtonPrecise("./images/activeInput.png"):		#switch to reference input screen
-			pass
-		while not clickButtonPrecise("./images/referenceInput.png"):
-			pass
+		pag.click(x=sets.dropdownImpedence[0],y=sets.dropdownImpedence[1])		#switch to reference input screen
+		time.sleep(0.5)
+		pag.click(x=sets.reference[0],y=sets.reference[1])
 		relaisCommand(conn,3,sets.cards,6)						#set relais to voltage divider
 		wait = 0
 		test=True
@@ -187,10 +180,9 @@ def main():
 				correct+=1
 		if correct == len(result):
 			activeNotShorted = True
-			resultFile.write("active inputs niet kortgesloten ok")
+			resultFile.write("active inputs niet kortgesloten ok\n")
 		else:
-			resultFile.write("active inputs niet kortgesloten niet ok")
-		#relaisCommand(conn,7,sets.cards,relais)				#turn off last relais for next test
+			resultFile.write("active inputs niet kortgesloten niet ok\n")
 		conn.read(4)
 		#active inputs shorted
 		relais = 4											#first relais on this card are for other purposes
@@ -211,11 +203,11 @@ def main():
 			conn.read(4)									#clear buffer
 			value = readValue(result[i][0],result[i][1],result[i][2],result[i][3],names[i][0]+"_NS.png")
 			test = False
-			for j in range(sets.maxWait):							#try a coulple of times to give time to settle
+			for j in range(sets.maxWait):					#try a coulple of times to give time to settle
 				if (value==0 and value !=-1):
 					break
 					stable = True
-					for i in range(sets.stableImpedence):			#stay stable on correct value for some time
+					for i in range(sets.stableImpedence):	#stay stable on correct value for some time
 						value = readValue(result[i][0],result[i][1],result[i][2],result[i][3],names[i][0]+"_NS.png")
 						if not (value<=sets.maxSmallImpedence and value !=-1):
 							stable = False
@@ -230,97 +222,129 @@ def main():
 		if not test:										#test unsuccesfull
 			print("actS not ok")
 		#close the impedence window
-		clickButton("./images/closeImpedence.png")
-		#TODO: close prev measurement
+		pag.click(x=sets.impedance[0],y=sets.impedance[1])
+		#close current measurement
+		os.system("taskkill /f /im BrtTask.exe")
+		time.sleep(3)
 #start new measurement to get clean data, because some other measurements stop during impedance check
-	#TODO: fixen met meerder protocols
 	startMeasurement()
 #signal check and oxymeter check
-	"""
-	#set signal on function generator (sine, 10Hz 4Vpp)
-	afg.write("FUNCTION SIN")
-	afg.write("FREQUENCY 10")
-	afg.write("VOLTAGE:UNIT VPP")
-	afg.write("OUTPUT:IMP INF")
-	afg.write("VOLTAGE:AMPLITUDE 4") #voltage divider makes it 4 mVpp
-	afg.write('OUTPUT1 on')
-	#let signal go trough for every input
-	conn.read()
-	relaisCommand(conn,3,sets.cards,250)
-	conn.read(4)
-	for i in range(1,sets.cards):
-		print("loop")
-		relaisCommand(conn,3,i,255)
+	#set signal on function generator
+	if sig:
+		afg.write("FUNCTION SIN")
+		afg.write("FREQUENCY "+str(sets.frequency))
+		afg.write("VOLTAGE:UNIT VPP")
+		afg.write("OUTPUT:IMP INF")
+		afg.write("VOLTAGE:AMPLITUDE "+str(sets.amplitude)) #voltage divider makes it 4 mVpp
+		afg.write('OUTPUT1 on')
+		#let signal go trough for every input by switching all necessary relais
+		conn.read()
+		relaisCommand(conn,3,sets.cards,250)
 		conn.read(4)
-	time.sleep(3)
-	#turn off all relais, not needed, but just in case
-	relaisCommand(conn,3,0,0)
-	#close current measurement
-	Popen(["taskkill","/IM","BrtTask.exe"])
-	time.sleep(3)					#give program some time to shut down
-	path = getPath()
-	#TODO: TODO in fft function (brt2p_func)
-	result = fft(path)	
-	correct = 0
-	for item in result:
-	#TODO: check of die 4 wel klopt
-		if len(item[0])==1 and item[0] == 10 and item[1]==4:
-			correct +=1
-	if correct == len(result):
-		print("signalRef ok")
-	else:
-		print("signalRef not ok")
-	if oxyMeter(path)[0] == 98.0 and oxyMeter(path)[1] == 80.0:
-		print("oxymeter ok")
-	else:
-		print("oxymeter not ok")
+		for i in range(1,sets.cards):
+			relaisCommand(conn,3,i,255)
+			conn.read(4)
+		time.sleep(3)										#let it run long enough to get enough datapoints
+		pag.screenshot("signal_ref0")						#screenshot for in report
+		#close current measurement
+		os.system("taskkill /f /im BrtTask.exe")
+		time.sleep(3)										#give program some time to shut down
+		path = getPath()
+		#TODO: TODO in fft function (brt2p_func)
+		result = fft(path)	
+		correct = 0
+		for item in result:
+		#TODO: fixen wat die 4 moet zijn, nog geen idee hoe
+			print(item[1])
+			if len(item[0])==1 and item[0] == 10 and item[1]==4:
+				correct +=1
+		if correct == len(result):
+			resultFile.write("signalRef ok")
+		else:
+			resultFile.write("signalRef not ok")
+	if oxy:
+		if oxyMeter(path)[0] == 98.0 and oxyMeter(path)[1] == 80.0:
+			resultFile.write("oxymeter waarden ok")
+		else:
+			resultFile.write("oxymeter waarden not ok")
+	os.system("taskkill /f /im ShellPlus.exe")
+	if sig:
+		for i in range(1,len(protocols)):
+			if not "bip" in protocols[i][0]:
+				emptyFolder()
+				moveForUse(protocols[i][0])
+				Popen(sets.pathToShellPlus)
+				time.sleep(15)
+				startMeasurement()
+				time.sleep(3)
+				pag.screenshot("signal_ref"+str(i))
+				os.system("taskkill /f /im BrtTask.exe")
+				time.sleep(3)
+				os.system("taskkill /f /im ShellPlus.exe")
+				time.sleep(3)
+			else:
+				break
 #signal check bip
-	#move the correct protocol to the folder to use it
-	Popen(["taskkill","/IM","C:\Program Files (x86)\BrainRT\ShellPlus.exe"])
-	time.sleep(3)					#give program some time to shut down
-	#empty map where protocols are stored and only put needed protocols in there
-	emptyFolder()
-	moveForUse(sets.protocolFiles.get("morpheus_bip"))
-	#open Shell+ again and wait for it to start up properly
-	Popen(sets.pathToShellPlus)
-	time.sleep(15)
-	#start new measurement
-	startMeasurement()
-	#let signal go trough for every input
-	relaisCommand(conn,3,sets.cards,250)
-	conn.read(4)
-	for i in range(1,sets.cards):
-		relaisCommand(conn,3,i,255)
-		conn.read(4)
-	click=clickButton("./images/record.png")
-	time.sleep(3)
-	Popen(["taskkill","/IM","BrtTask.exe"])
-	result = fft(getPath())
-	correct = 0
-	for item in result:
-	#TODO: check of die 4 wel klopt
-		if len(item[0])==1 and item[0] == 10 and item[1]==4:
-			correct +=1
-	if correct == len(result):
-		print("signalBip ok")
-	else:
-		print("signalBip not ok")
+	if sigBip:
+		#move the correct protocol to the folder to use it
+		os.system("taskkill /f /im ShellPlus.exe")
+		time.sleep(3)					#give program some time to shut down
+		#empty map where protocols are stored and only put needed protocols in there
+		bipId = 0
+		emptyFolder()
+		for protocol in protocols:
+			if "bip" in protocol[0]:
+				cursor.execute("SELECT protocolId FROM protocols where  fileName = '"+protocol[0]+"';")
+				bipId = cursor.fetchall()[0][0]
+				#TODO: NOG EEN FETCH EN DAN MET DIE ID EEN LOOP BEGINNEN
+				moveForUse(protocol[0])
+				#open Shell+ again and wait for it to start up properly
+				Popen(sets.pathToShellPlus)
+				time.sleep(15)
+				#start new measurement
+				startMeasurement()
+				time.sleep(3)
+				pag.screenshot("signal_bip0")
+				os.system("taskkill /f /im BrtTask.exe")
+				time.sleep(3)
+				os.system("taskkill /f /im ShellPlus.exe")
+				result = fft(getPath())
+				correct = 0
+				for item in result:
+				#TODO: check of die 4 wel klopt
+					if len(item[0])==1 and item[0] == 10 and item[1]==4:
+						correct +=1
+				if correct == len(result):
+					resultFile.write("signalBip ok")
+				else:
+					resultFile.write("signalBip not ok")
+		for i in range(bipId+1,len(protocols)):
+			emptyFolder()
+				moveForUse(protocols[i][0])
+				Popen(sets.pathToShellPlus)
+				time.sleep(15)
+				startMeasurement()
+				time.sleep(3)
+				pag.screenshot("signal_ref"+str(i))
+				os.system("taskkill /f /im BrtTask.exe")
+				time.sleep(3)
+				os.system("taskkill /f /im ShellPlus.exe")
+				time.sleep(3)
 #onboard sensors (comes last because a person is needed to perform these actions)
 	#get back to reference test
-	#close Shell+ if still open and give enough time to close properly
-	Popen(["taskkill","/IM","C:\Program Files (x86)\BrainRT\ShellPlus.exe"])
-	time.sleep(1)
-	#empty map where protocols are stored and only put needed protocols in there
-	emptyFolder()
-	moveForUse(sets.protocolFiles.get("morpheus_ref"))
+	emptyFolder()											#empty map where protocols are stored and only put needed protocols in there
+	moveForUse(protocols[0])
 	#open Shell+ again and wait for it to start up properly
 	Popen(sets.pathToShellPlus)
 	time.sleep(15)
 	#start new measurement
 	startMeasurement()
-	input("change bodyposition, press enter to continue")
-	print("check Pdiff and Pgage, press enter to continue")
-	#TODO: close BrainRT
+	input("change and check bodyposition, press enter to continue")
+	input("check Pdiff and Pgage, press enter to continue")
+	#close BrainRT
+	os.system("taskkill /f /im BrtTask.exe")
+	time.sleep(3)
+	os.system("taskkill /f /im ShellPlus.exe")
 	#TODO: make rapport
 #close the serial connection, textfile, database connection and cursor on database
 	conn.close()
