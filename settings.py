@@ -20,6 +20,7 @@ impedanceWindow = [50,150,750,580]											#coordinates between which to take 
 start = [540,520]															#coordinates to start measurement (button without keyboard shortcut)
 pulseSig = [25,95,1770,160]													#coordinates between which to take screenshot of pulse signal
 dataTrans = [1265,1010,1495,1030]											#coordinates between which to take screenshot of data transition
+oxymeter = [1765,785,1920,1010]												#coordinates between which to take screenshot of oxymeter
 #-----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #monitor settings
 m_width=[]

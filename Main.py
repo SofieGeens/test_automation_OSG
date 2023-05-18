@@ -265,22 +265,25 @@ def main():
 		time.sleep(10)										#give program some time to shut down
 		path = getPath()
 		result = np_fft(path,cursor,False)	
-		correct = 0
+		cursor.execute("SELECT inputName FROM inputs where  testId = "+str(testID)+" ORDER BY inputId;")
+		names = cursor.fetchall()
+		index = 1
 		for item in result:
 		#TODO: fixen wat die 4 moet zijn, nog geen idee hoe, misschien gewoon subtiel weglaten?
 			print(item[1])
 			if len(item[0])==1 and item[0] == 10 and item[1]==4:
-				correct +=1
-		if correct == len(result):
-			resultFile.write("<p style='color:green;'>referentie signaal "+names[i][0]+" ok</p>")
-		else:
-			resultFile.write("signalRef not ok")
+				resultFile.write("<p style='color:green;'>referentie signaal "+names[index][0]+" ok</p>")
+			else:
+				resultFile.write("<p style='color:red;'>referentie signaal "+names[index][0]+" niet ok</p>")
+			resultFile.write("<img src='signal_ref0.png' alt='referentie signaal'>")
 	if oxy:
 		result = oxyMeter(path)
 		if result[0] == 98.0 and result[1] == 80.0:
 			resultFile.write("<p style='color:green;'>oxymeter waarden ok</p>")
 		else:
 			resultFile.write("<p style='color:green;'>oxymeter waarden not ok</p>")
+		pag.screenshot("oxymeter.png",region = (sets.oxymeter[0],sets.oxymeter[1],sets.oxymeter[2],sets.oxymeter[3]))
+		resultFile.write("<img src='oxymeter.png' alt='oxymeter waarden'>")
 	os.system("taskkill /f /im ShellPlus.exe")
 	if sig:
 		for i in range(1,len(protocols)):
@@ -315,29 +318,27 @@ def main():
 			if "bip" in protocol[0]:
 				cursor.execute("SELECT protocolId FROM protocols where  fileName = '"+protocol[0]+"';")
 				bipId = cursor.fetchall()[0][0]
-				#TODO: NOG EEN FETCH EN DAN MET DIE ID EEN LOOP BEGINNEN
 				moveForUse(protocol[0])
 				#open Shell+ again and wait for it to start up properly
 				Popen(sets.pathToShellPlus)
 				time.sleep(15)
 				#start new measurement
 				startMeasurement()
-				time.sleep(3)
+				time.sleep(5)
 				pag.screenshot("signal_bip0.png")
 				os.system("taskkill /f /im BrtTask.exe")
 				time.sleep(3)
 				os.system("taskkill /f /im ShellPlus.exe")
 				time.sleep(15)
 				result = np_fft(getPath(),cursor,True)
-				correct = 0
+				index = 0
 				for item in result:
 				#TODO: check of die 4 wel klopt
 					if len(item[0])==1 and item[0] == 10 and item[1]==4:
-						correct +=1
-				if correct == len(result):
-					resultFile.write("signalBip ok")
-				else:
-					resultFile.write("signalBip not ok")
+						resultFile.write("<p style='color:green;'>referentie signaal "+names[index][0]+" ok</p>")
+					else:
+						resultFile.write("<p style='color:red;'>referentie signaal "+names[index][0]+" niet ok</p>")
+					resultFile.write("<img src='signal_bip0.png' alt='bipolair signaal'>")
 		for i in range(bipId+1,len(protocols)):
 			emptyFolder()
 			moveForUse(protocols[i][0])
@@ -345,7 +346,8 @@ def main():
 			time.sleep(15)
 			startMeasurement()
 			time.sleep(3)
-			pag.screenshot("signal_ref"+str(i)+".png")
+			pag.screenshot("signal_bip"+str(i)+".png")
+			resultFile.write("<img src='signal_bip"+str(i)+".png' alt='bipolair signaal'>")
 			os.system("taskkill /f /im BrtTask.exe")
 			time.sleep(5)
 			os.system("taskkill /f /im ShellPlus.exe")
