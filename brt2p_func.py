@@ -4,8 +4,7 @@ import numpy as np
 import settings as sets
 from codeBRT.parsing.interface.generic_type import ChannelType, EventType, Spo2ChannelSubtype
 from codeBRT.parsing.brt.reader import BrtMeasurementReader
-from scipy.fft import fft, fftfreq
-import scipy
+from numpy.fft import fft, fftfreq
 
 def getPath():
 	#returns the most recent file ending in -hrd.sig, this is the filetype needed to use Brt2python
@@ -17,47 +16,42 @@ def getPath():
 			break
 		else:
 			list_of_files.remove(latest_file)
-	#TODO: does this work? 
 	path = latest_file #r'%s' % latest_file
 	return path
 
 
-def np_fft(path):
+def np_fft(path,cursor,bip):
 	#returns list containing a list for each channel containing a list with all unignorable frequencies and the amplitude of the highest signal
 	freqAndAmp = []
-	#TODO: get this information from DB
 	
 	# Define reader and get list of all channels
 	result = []
 	reader = BrtMeasurementReader(path)
-	channels = reader.channel_list
-	data_eeg = reader.read_data(ChannelType.EEG)	#data of all EEG channels
-	for channel in sets.channelList:
-		data = data_eeg[channel][0].data				#datapoints of signal on channel, 0 because I look at the first file, sometimes multiple files are made, does not apply on this project
-		sampleRate = data_eeg[channel][0].sampling_rate	#sample rate
-		N = len(data_eeg[channel][0].data)				#number of datapoints
+	data_eeg = reader.read_data(ChannelType.EEG)			#data of all EEG channels
+	if not bip:
+		cursor.execute("SELECT inputName FROM inputs WHERE testID = 0;")
+	else:
+		cursor.execute("SELECT inputName FROM inputs WHERE testID = 0 AND bip = 1;")
+	channels = cursor.fetchall()
+	for i in range(1,len(channels)):
+		data = data_eeg[channels[i][0]][0].data					#datapoints of signal on channel, 0 because I look at the first file, sometimes multiple files are made, does not apply on this project
+		sampleRate = data_eeg[channels[i][0]][0].sampling_rate	#sample rate
+		N = len(data_eeg[channels[i][0]][0].data)				#number of datapoints
 		fftx = fftfreq(N,1/sampleRate).tolist()
-		fftx = fftx[:int(len(fftx)/2)]					#only look at second half of values, others are mirrored over zero, we only need positive values
-		ffty = scipy.fft.fft(data).tolist()
-		ffty = ffty[:int(len(ffty)/2)]					#only look at second half of values, others are mirrored over zero, we only need positive values
-		ffty = 2/N * np.abs(ffty)						#get amplitude of fft
-		print(type(ffty))
-		maxindex = np.where(ffty == max(ffty))				#the same index in fftx should give the frequency of the ingoing signal
+		fftx = fftx[:int(len(fftx)/2)]							#only look at second half of values, others are mirrored over zero, we only need positive values
+		ffty = fft(data).tolist()
+		ffty = ffty[:int(len(ffty)/2)]							#only look at second half of values, others are mirrored over zero, we only need positive values
+		ffty = 2/N * np.abs(ffty)								#get amplitude of fft
+		maxindex = np.where(ffty == max(ffty))					#the same index in fftx should give the frequency of the ingoing signal
 		amplitude = max(ffty)
-		print(int(fftx[maxindex[0][0]]))
-		import matplotlib.pyplot as plt
-		plt.plot(fftx, ffty)
-		plt.grid()
-		plt.show()
 		indexes = []
 		frequencies = []
-		for i in range (len(ffty)):						#only look at second half of values, others are mirrored over zero, we only need positive values
+		for i in range (len(ffty)):									#only look at second half of values, others are mirrored over zero, we only need positive values
 			if ffty[i] > ffty[maxindex]/10 and round(fftx[i])>0:	#check if spike is higher than 10% of highest spike
 				if not round(fftx[i]) in frequencies:
 					frequencies.append(round(fftx[i]))
-					print(fftx[i],ffty[i])
 		result.append(frequencies)
-		freqAndAmp.append([result,amplitude])			# 3D list, contais lists containing a list (frequencies, only one when correct) and a value (amplitude)
+		freqAndAmp.append([result,amplitude])						# 3D list, contais lists containing a list (frequencies, only one when correct) and a value (amplitude)
 	return freqAndAmp	
 
 def oxyMeter(path):
@@ -71,14 +65,15 @@ def oxyMeter(path):
 	info.append(findMostFrequent(data_heartrate['Heartrate'][0].data))
 	return info
 
-def findMostFrequent(arr):
-	#returns the value that is the most frequent in an array
+def findMostFrequent(array):
+	#returns the value that is the most frequent in the second half of an array, I use only the second half because the values need some time to settle
     # Sort the array
+	arr=array[int(len(arr)/2):]
     arr.sort()
     # find the max frequency using
     # linear traversal
     max_count = 1
-    res = arr[0]
+    result = arr[0]
     curr_count = 1
     for i in range(1, len(arr)):
         if (arr[i] == arr[i - 1]):
@@ -88,8 +83,8 @@ def findMostFrequent(arr):
          # If last element is most frequent
         if (curr_count > max_count):
             max_count = curr_count
-            res = arr[i - 1]
-    return res
+            result = arr[i - 1]
+    return result
 
 #for testing purposes
 #print(np_fft(r'C:\ProgramData\OSG\BrainRT\Signals\Online\osg_00000_0000145-hdr.sig'))

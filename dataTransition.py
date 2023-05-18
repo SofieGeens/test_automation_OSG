@@ -4,7 +4,6 @@ from python_imagesearch.imagesearch import imagesearch
 import time
 import settings as sets
 
-#TODO: use pyautogui to find image?
 def checkBt(conn):
 	for i in range(sets.maxWait):							#try for some time, if it takes to long, decide i doesn't work
 		x,y = imagesearch("./images/bluethoot.png")				#find the correct pixel

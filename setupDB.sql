@@ -31,6 +31,7 @@ CREATE TABLE sigProp (
 CREATE TABLE inputs (
     testId INT NOT NULL,
     inputId INT NOT NULL,
+    bip bit(1),
     inputName VARCHAR(5),
     PRIMARY KEY (inputId),
     FOREIGN KEY (testId) REFERENCES test(testId)

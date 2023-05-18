@@ -10,11 +10,24 @@ def startMeasurement():
 	pag.keyUp("alt")
 	pag.keyUp("b")
 	pag.press("n")
+	time.sleep(3)
 	pag.write("test")
 	pag.press("enter")
+	for i in range(sets.maxWait):
+		if clickButton("./images/chooseProtocol.png"):
+			break
+	pag.press("down")
 	pag.press("enter")
-	while not clickButton("./images/starten.png"):
-		pass
+	pag.press("enter")
+	pag.press("enter")
+	start = False
+	for i in range(sets.maxWait):
+		if clickButton("./images/starten.png"):
+			start = True
+			break
+	if not start:
+		print("de startknop kon niet gevonden worden")
+		exit()
 	startrec = False
 	#start the recorcing
 	for i in range(sets.maxWait):						#wait for this button to appear, then click it

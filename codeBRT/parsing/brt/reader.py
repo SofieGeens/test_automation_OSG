@@ -38,7 +38,6 @@ class BrtMeasurementReader(IReader):
                   "'-hdr.sig'. Make sure the correct reader was applied to " \
                   "this measurement. "
             raise InvalidExtension(msg=msg)
-        
         self.path = path
 
         self.event_type = event_type

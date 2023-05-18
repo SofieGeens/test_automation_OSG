@@ -8,22 +8,22 @@ INSERT INTO protocols (testId, fileName,protocolId) VALUES (0, 'Validation Morph
 
 INSERT INTO sigProp (amp,testId,sigId,freq) VALUES (4.0,0,0,10);
 
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,0,"refInput");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,1,"1");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,2,"2");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,3,"3");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,4,"4");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,5,"5");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,6,"6");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,7,"7");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,8,"8");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,9,"9");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,10,"10");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,11,"11");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,12,"12");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,13,"13");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,14,"14");
-INSERT INTO inputs (testId,inputId,inputName) VALUES (0,15,"15");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,0,0,"refInput");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,1,0,"1");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,2,0,"2");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,3,0,"3");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,4,0,"4");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,5,0,"5");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,6,0,"6");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,7,0,"7");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,8,0,"8");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,9,0,"9");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,10,0,"10");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,11,0,"11");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,12,0,"12");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,13,1,"13");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,14,1,"14");
+INSERT INTO inputs (testId,inputId,bip,inputName) VALUES (0,15,1,"15");
 
 INSERT INTO impedanceCoordinates (inputId,x1,y1,x2,y2) VALUES (0,190,350,230,370);
 INSERT INTO impedanceCoordinates (inputId,x1,y1,x2,y2) VALUES (1,85,510,130,530);
