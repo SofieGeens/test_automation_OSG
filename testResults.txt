@@ -1,5 +1,0 @@
-pulsesignaal ok 
-cable naar bluetooth ok
-bluetooth naar cable ok
-referentie input impedantie niet kortgesloten okreferentie input impedantie kortgesloten okactive inputs niet kortgesloten niet ok
-signalRef not okoxymeter waarden not oksignalBip not ok

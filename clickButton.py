@@ -8,7 +8,7 @@ def clickButton(img):
         x+=5
         y+=5
         pag.click(x=x,y=y)
-        print(img + " clicked on",x,y)
+        #print(img + " clicked on",x,y)
         return True
     else:
         #print(img + "not found")
@@ -21,7 +21,7 @@ def clickButtonPrecise(img):
         x+=5
         y+=5
         pag.click(x=x,y=y)
-        print(img + " clicked on",x,y)
+        #print(img + " clicked on",x,y)
         return True
     else:
         #print(img + "not found")
@@ -33,7 +33,7 @@ def clickButtonPreciseArea(img,x1,y1,x2,y2):
         x+=5
         y+=5
         pag.click(x=x,y=y)
-        print(img + " clicked on",x,y)
+        #print(img + " clicked on",x,y)
         return True
      else:
         print(img + "not found")

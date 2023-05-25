@@ -4,6 +4,8 @@ DROP TABLE testParameters;
 DROP TABLE impedanceCoordinates;
 DROP TABLE inputs;
 DROP TABLE test;
+DROP TABLE person;
+DROP TABLE progress;
 
 CREATE TABLE test (
     testId INT NOT NULL,
@@ -61,4 +63,25 @@ CREATE TABLE testParameters (
     cb bit(1),
     PRIMARY KEY (testId),
     FOREIGN KEY (testId) REFERENCES test(testId)
+);
+
+CREATE TABLE person(
+    personID int,
+    name VARCHAR(15),
+    PRIMARY KEY (personID)
+);
+
+CREATE TABLE progress(
+	serialNumber VARCHAR(10),
+    -- 0 means not done yet, 1 means in progress, 2 means test succeeded, 3 means test didn't succeed
+    oxysig INT NOT NULL,
+    oxy INT NOT NULL,
+    bodypos INT NOT NULL,
+    impRef INT NOT NULL,
+    impAct INT NOT NULL,
+    sig INT NOT NULL,
+    sigBip INT NOT NULL,
+    press INT NOT NULL,
+    cb INT NOT NULL,
+    PRIMARY KEY(serialNumber)    
 );

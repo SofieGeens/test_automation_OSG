@@ -6,7 +6,8 @@ import settings as sets
 
 def checkBt(conn):
 	for i in range(sets.maxWait):							#try for some time, if it takes to long, decide i doesn't work
-		x,y = imagesearch("./images/bluethoot.png")				#find the correct pixel
+		x,y = imagesearch(sets.images+"bluethoot.png")				#find the correct pixel
+		print(x,y)
 		if x!= -1:
 			s = pag.screenshot()
 			color = s.getpixel((x,y))
@@ -18,7 +19,7 @@ def checkBt(conn):
 
 def checkCable():
 	for i in range(sets.maxWait):							#try for some time, if it takes to long, decide i doesn't work
-		x,y = imagesearch("./images/cable.png")				#find the correct pixel
+		x,y = imagesearch(sets.images+"cable.png")				#find the correct pixel
 		print(x,y)
 		if x!= -1:
 			s = pag.screenshot()

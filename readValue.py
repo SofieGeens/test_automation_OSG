@@ -20,7 +20,7 @@ def readValue(x1,y1,x2,y2,filename):
 		for y in range(img.height):
 			if img.getpixel((x,y))>50:
 				img.putpixel((x,y),255)
-	pag.screenshot(filename,region = (sets.impedanceWindow[0],sets.impedanceWindow[1],sets.impedanceWindow[2],sets.impedanceWindow[3]))						#save the image, for debugging
+	pag.screenshot(filename,region = (sets.impedanceWindow[0],sets.impedanceWindow[1],sets.impedanceWindow[2]-sets.impedanceWindow[0],sets.impedanceWindow[3]-sets.impedanceWindow[1]))						#save the image, for debugging
 	result = pytesseract.image_to_string(img, config='--psm 6 --oem 3 -c tessedit_char_whitelist=0123456789')	#psm 6: assume uniform block of text, oem 3: use whatever engine mode that is available
 	print(result)
 	try:
