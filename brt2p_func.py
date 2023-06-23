@@ -5,7 +5,7 @@ import settings as sets
 from codeBRT.parsing.interface.generic_type import ChannelType, EventType, Spo2ChannelSubtype
 from codeBRT.parsing.brt.reader import BrtMeasurementReader
 from numpy.fft import fft, fftfreq
-from matplotlib import pyplot as plt
+#from matplotlib import pyplot as plt
 
 def getPath():
 	#returns the most recent file ending in -hrd.sig, this is the filetype needed to use Brt2python
