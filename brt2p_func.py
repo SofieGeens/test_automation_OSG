@@ -96,4 +96,4 @@ def findMostFrequent(array):
 
 #for testing purposes
 #print(np_fft(r'C:\ProgramData\OSG\BrainRT\Signals\Online\osg_00000_0000145-hdr.sig'))
-#print(oxyMeter('C:\ProgramData\OSG\BrainRT\Signals\Online\osg_00000_0000145-hdr.sig'))
+print(oxyMeter('C:\ProgramData\OSG\BrainRT\Signals\Online\osg_00000_0000145-hdr.sig'))
