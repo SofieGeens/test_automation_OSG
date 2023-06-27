@@ -82,7 +82,6 @@ def main():
 	fname = protocols[0][0]
 	moveForUse(fname)
 	#open Shell+ again, wait for it to start up properly and start the measurement
-	"""
 	Popen(sets.pathToShellPlus)
 	time.sleep(15)
 	startMeasurement()
@@ -147,7 +146,7 @@ def main():
 		time.sleep(10)
 		#reference input not shorted
 		pag.click(x=sets.dropdownImpedance[0],y=sets.dropdownImpedance[1])		#switch to reference input screen
-		time.sleep(1)
+		time.sleep(5)
 		pag.click(x=sets.reference[0],y=sets.reference[1])
 		relaisCommand(conn,3,sets.cards,6)						#set relais to voltage divider
 		wait = 0
@@ -207,6 +206,7 @@ def main():
 		pag.click(x=sets.dropdownImpedance[0],y=sets.dropdownImpedance[1])		#switch to reference input screen
 		time.sleep(0.5)
 		pag.click(x=sets.active[0],y=sets.active[1])
+		time.sleep(5)
 		relaisCommand(conn,6,sets.cards,4)					#switch relais to voltage divider mode
 		conn.read(100)										#empty relais buffer
 		for i in range(1,len(result)):						#for every input
@@ -432,7 +432,6 @@ def main():
 	else:
 		cursor.execute("UPDATE progress SET sigBip=3")
 	dbConn.commit()
-	"""
 #onboard sensors (comes last because a person is needed to perform these actions)
 	#get back to reference test
 	emptyFolder()											#empty map where protocols are stored and only put needed protocols in there
